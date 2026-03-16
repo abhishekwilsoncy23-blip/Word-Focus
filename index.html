@@ -15,7 +15,6 @@
         }
 
         h1 { margin: 0 0 10px 0; font-size: 2rem; color: #ffffff; text-transform: uppercase; }
-        
         #instructions { font-size: 0.9rem; margin-bottom: 10px; color: #aaaaaa; text-align: center; }
 
         /* Header Stats */
@@ -52,7 +51,6 @@
         }
 
         .cell:hover { background: #3a3a3a; }
-        
         .cell.found { background: #2e7d32; color: #ffffff; }
         .cell.selected { background: #f1c40f !important; color: #121212 !important; transform: scale(0.9); }
 
@@ -91,7 +89,6 @@
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
         .reward-text { color: #4CAF50; font-size: 1.5rem; margin-top: 5px; margin-bottom: 15px;}
-
     </style>
 </head>
 <body>
@@ -129,33 +126,38 @@
     </div>
 
     <script>
+        // --- BULLETPROOF POKI FALLBACK ---
+        // Runs instantly. If your ISP/Router blocks Poki, this creates a fake SDK so the game never crashes.
+        if (typeof PokiSDK === 'undefined') {
+            console.warn("Poki SDK blocked by network. Loading dummy SDK to prevent crash.");
+            window.PokiSDK = {
+                init: () => Promise.resolve(),
+                gameLoadingStart: () => {},
+                gameLoadingFinished: () => {},
+                gameplayStart: () => {},
+                gameplayStop: () => {},
+                commercialBreak: () => Promise.resolve(),
+                rewardedBreak: () => Promise.resolve(false)
+            };
+        }
+
         const GRID_SIZE = 10;
-        
-        // --- PUT YOUR RAW GITHUB URL HERE IF TESTING LOCALLY ---
-        // Example: 'https://raw.githubusercontent.com/YourName/YourRepo/main/words.txt'
-        // If playing on GitHub Pages or Poki directly, 'words.txt' is fine.
         const WORDS_URL = 'words.txt'; 
 
         let masterWordBank = [];
         let availableWords = [];
         let usedWords = [];
-        
         let grid = [];
         let wordsToFind = [];
         let selectedCell = null;
-
         let currentLevel = 1;
         let lives = 7;
-        
         let currentWordIndex = 0;
         let timeLeft = 45;
         let timerInterval = null;
 
-        // Initialize variables empty so they are globally accessible
         let gridEl, wordListEl, winScreen, gameOverScreen, pauseScreen, instructionsEl, gameAreaEl, headerStatsEl, livesDisplay, timerDisplay, levelDisplay, rewardMessage;
 
-        // --- DOM CONTENT LOADED EVENT ---
-        // This ensures the HTML is 100% loaded before we try to grab it.
         document.addEventListener("DOMContentLoaded", () => {
             gridEl = document.getElementById('grid');
             wordListEl = document.getElementById('word-list');
@@ -172,11 +174,9 @@
 
             // --- POKI SDK INITIALIZATION ---
             PokiSDK.init().then(() => {
-                console.log("Poki SDK successfully initialized");
                 PokiSDK.gameLoadingStart(); 
                 loadWords();
             }).catch(() => {
-                console.log("Initialized, but user has adblock");
                 PokiSDK.gameLoadingStart(); 
                 loadWords(); 
             });
@@ -219,13 +219,11 @@
                 
                 instructionsEl.innerHTML = "Find the highlighted word before time runs out!";
                 
-                // --- POKI SDK LOADING FINISHED ---
                 PokiSDK.gameLoadingFinished(); 
-                
                 initGame();
                 
             } catch (error) {
-                instructionsEl.innerHTML = "<span style='color: #ff5252;'>Error: Could not load words.txt. Check CORS or file path.</span>";
+                instructionsEl.innerHTML = "<span style='color: #ff5252;'>Error: Could not load words.txt.</span>";
                 console.error(error);
             }
         }
