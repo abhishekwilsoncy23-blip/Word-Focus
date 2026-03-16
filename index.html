@@ -1,5 +1,141 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Word Focus</title>
+    <script src="https://game-player.poki.com/core/v2/poki-sdk.js"></script>
+    <style>
+        body {
+            margin: 0; background-color: #121212; color: #e0e0e0;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex; flex-direction: column; align-items: center; 
+            min-height: 100vh; padding: 20px; box-sizing: border-box;
+            user-select: none; touch-action: manipulation;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 2rem; color: #ffffff; text-transform: uppercase; }
+        
+        #instructions { font-size: 0.9rem; margin-bottom: 10px; color: #aaaaaa; text-align: center; }
+
+        /* Header Stats */
+        #header-stats {
+            display: none; justify-content: space-between; align-items: center;
+            width: 100%; max-width: 500px; margin-bottom: 15px;
+            font-size: 1.1rem; font-weight: bold; background: #1e1e1e;
+            padding: 10px 15px; border-radius: 8px; box-sizing: border-box;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        #level-display { color: #3498db; }
+        #timer-display { color: #ff5252; }
+        
+        /* Pause Button inside Header */
+        #pause-btn {
+            background: none; border: none; color: white; font-size: 1.5rem;
+            cursor: pointer; padding: 0; box-shadow: none; margin-top: 0;
+        }
+
+        #game-area {
+            display: none; flex-direction: column; gap: 20px; width: 100%; max-width: 500px;
+        }
+
+        #grid {
+            display: grid; gap: 2px; background: #333333; padding: 4px;
+            border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        .cell {
+            background: #242424; color: #e0e0e0; aspect-ratio: 1; display: flex; 
+            align-items: center; justify-content: center;
+            font-size: 1.2rem; font-weight: bold; cursor: pointer;
+            border-radius: 4px; transition: 0.2s;
+        }
+
+        .cell:hover { background: #3a3a3a; }
+        
+        .cell.found { background: #2e7d32; color: #ffffff; }
+        .cell.selected { background: #f1c40f !important; color: #121212 !important; transform: scale(0.9); }
+
+        #word-list {
+            display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+            background: #1e1e1e; padding: 15px; border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); border: 2px dashed #555555;
+        }
+
+        .word {
+            font-size: 1.1rem; font-weight: bold; padding: 5px 10px;
+            border-radius: 20px; background: #333333; color: #cccccc; transition: 0.3s;
+        }
+
+        .word.active-word {
+            background: #f1c40f; color: #121212; transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+        }
+
+        .word.found {
+            text-decoration: line-through; background: #2e7d32; color: white; opacity: 0.6;
+        }
+
+        .screen {
+            display: none; flex-direction: column; align-items: center;
+            margin-top: 20px; text-align: center; background: #1e1e1e;
+            padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        button {
+            background: #3498db; color: white; border: none; padding: 12px 24px;
+            font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-family: inherit; margin-top: 15px;
+        }
+        button.ad-btn { background: #e67e22; }
+        button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+        .reward-text { color: #4CAF50; font-size: 1.5rem; margin-top: 5px; margin-bottom: 15px;}
+
+    </style>
+</head>
+<body>
+
+    <h1>Word Focus</h1>
+    <div id="instructions">Loading words...</div>
+
+    <div id="header-stats">
+        <span id="level-display"></span>
+        <span id="lives-display"></span>
+        <span id="timer-display">⏱️ 45s</span>
+        <button id="pause-btn" onclick="pauseGame()">⏸️</button>
+    </div>
+
+    <div id="game-area">
+        <div id="grid"></div>
+        <div id="word-list"></div>
+    </div>
+
+    <div id="win-screen" class="screen">
+        <h2>Level Complete! 🎯</h2>
+        <div class="reward-text" id="reward-message">+1 Life ❤️</div>
+        <button onclick="nextLevel()">Next Level</button>
+    </div>
+
+    <div id="game-over-screen" class="screen">
+        <h2>Out of Lives! 💔</h2>
+        <p>You ran out of time.</p>
+        <button class="ad-btn" onclick="watchAd()">📺 Watch Ad to Refill Lives</button>
+    </div>
+
+    <div id="pause-screen" class="screen">
+        <h2>Game Paused ⏸️</h2>
+        <button onclick="resumeGame()">Resume Game</button>
+    </div>
+
+    <script>
         const GRID_SIZE = 10;
+        
+        // --- PUT YOUR RAW GITHUB URL HERE IF TESTING LOCALLY ---
+        // Example: 'https://raw.githubusercontent.com/YourName/YourRepo/main/words.txt'
+        // If playing on GitHub Pages or Poki directly, 'words.txt' is fine.
+        const WORDS_URL = 'words.txt'; 
+
         let masterWordBank = [];
         let availableWords = [];
         let usedWords = [];
@@ -15,42 +151,35 @@
         let timeLeft = 45;
         let timerInterval = null;
 
-        const gridEl = document.getElementById('grid');
-        const wordListEl = document.getElementById('word-list');
-        const winScreen = document.getElementById('win-screen');
-        const gameOverScreen = document.getElementById('game-over-screen');
-        const pauseScreen = document.getElementById('pause-screen');
-        const instructionsEl = document.getElementById('instructions');
-        const gameAreaEl = document.getElementById('game-area');
-        const headerStatsEl = document.getElementById('header-stats');
-        const livesDisplay = document.getElementById('lives-display');
-        const timerDisplay = document.getElementById('timer-display');
-        const levelDisplay = document.getElementById('level-display');
-        const rewardMessage = document.getElementById('reward-message');
+        // Initialize variables empty so they are globally accessible
+        let gridEl, wordListEl, winScreen, gameOverScreen, pauseScreen, instructionsEl, gameAreaEl, headerStatsEl, livesDisplay, timerDisplay, levelDisplay, rewardMessage;
 
-        // --- 1. AD-BLOCKER FALLBACK (MOCK SDK) ---
-        if (typeof PokiSDK === 'undefined') {
-            console.warn("Poki SDK failed to load (Adblocker?). Using fallback mode.");
-            window.PokiSDK = {
-                init: () => Promise.resolve(),
-                gameLoadingStart: () => {},
-                gameLoadingFinished: () => {},
-                gameplayStart: () => {},
-                gameplayStop: () => {},
-                commercialBreak: () => Promise.resolve(), 
-                rewardedBreak: () => Promise.resolve(true) 
-            };
-        }
+        // --- DOM CONTENT LOADED EVENT ---
+        // This ensures the HTML is 100% loaded before we try to grab it.
+        document.addEventListener("DOMContentLoaded", () => {
+            gridEl = document.getElementById('grid');
+            wordListEl = document.getElementById('word-list');
+            winScreen = document.getElementById('win-screen');
+            gameOverScreen = document.getElementById('game-over-screen');
+            pauseScreen = document.getElementById('pause-screen');
+            instructionsEl = document.getElementById('instructions');
+            gameAreaEl = document.getElementById('game-area');
+            headerStatsEl = document.getElementById('header-stats');
+            livesDisplay = document.getElementById('lives-display');
+            timerDisplay = document.getElementById('timer-display');
+            levelDisplay = document.getElementById('level-display');
+            rewardMessage = document.getElementById('reward-message');
 
-        // --- 2. POKI SDK INITIALIZATION ---
-        PokiSDK.init().then(() => {
-            console.log("Poki SDK successfully initialized");
-            PokiSDK.gameLoadingStart(); 
-            loadWords();
-        }).catch(() => {
-            console.log("Initialized, but user has adblock");
-            PokiSDK.gameLoadingStart(); 
-            loadWords(); 
+            // --- POKI SDK INITIALIZATION ---
+            PokiSDK.init().then(() => {
+                console.log("Poki SDK successfully initialized");
+                PokiSDK.gameLoadingStart(); 
+                loadWords();
+            }).catch(() => {
+                console.log("Initialized, but user has adblock");
+                PokiSDK.gameLoadingStart(); 
+                loadWords(); 
+            });
         });
 
         function loadSaveData() {
@@ -78,7 +207,7 @@
             try {
                 loadSaveData();
 
-                const response = await fetch('words.txt');
+                const response = await fetch(WORDS_URL);
                 if (!response.ok) throw new Error("File not found");
                 
                 const text = await response.text();
@@ -90,13 +219,13 @@
                 
                 instructionsEl.innerHTML = "Find the highlighted word before time runs out!";
                 
-                // --- 3. POKI SDK LOADING FINISHED ---
+                // --- POKI SDK LOADING FINISHED ---
                 PokiSDK.gameLoadingFinished(); 
                 
                 initGame();
                 
             } catch (error) {
-                instructionsEl.innerHTML = "<span style='color: #ff5252;'>Error: Could not load words.txt.</span>";
+                instructionsEl.innerHTML = "<span style='color: #ff5252;'>Error: Could not load words.txt. Check CORS or file path.</span>";
                 console.error(error);
             }
         }
@@ -126,10 +255,9 @@
             }, 1000);
         }
 
-        // --- 4. PAUSE GAME LOGIC ---
         function pauseGame() {
-            clearInterval(timerInterval); 
-            PokiSDK.gameplayStop();       
+            clearInterval(timerInterval);
+            PokiSDK.gameplayStop();
 
             PokiSDK.commercialBreak().then(() => {
                 gameAreaEl.style.display = "none";
@@ -142,7 +270,7 @@
             gameAreaEl.style.display = "flex";
             
             PokiSDK.gameplayStart(); 
-            resumeTimer();           
+            resumeTimer();
         }
 
         function loseLife() {
@@ -164,7 +292,6 @@
             }
         }
 
-        // --- 5. REWARDED AD LOGIC ---
         function watchAd() {
             PokiSDK.rewardedBreak().then((success) => {
                 if (success) {
@@ -356,3 +483,5 @@
             }
         }
     </script>
+</body>
+</html>
