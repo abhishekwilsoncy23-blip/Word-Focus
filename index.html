@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Word Focus</title>
+    <script src="https://game-player.poki.com/core/v2/poki-sdk.js"></script>
     <style>
         body {
             margin: 0; background-color: #121212; color: #e0e0e0;
@@ -27,6 +28,12 @@
         }
         #level-display { color: #3498db; }
         #timer-display { color: #ff5252; }
+        
+        /* Pause Button inside Header */
+        #pause-btn {
+            background: none; border: none; color: white; font-size: 1.5rem;
+            cursor: pointer; padding: 0; box-shadow: none; margin-top: 0;
+        }
 
         #game-area {
             display: none; flex-direction: column; gap: 20px; width: 100%; max-width: 500px;
@@ -46,7 +53,6 @@
 
         .cell:hover { background: #3a3a3a; }
         
-        /* Overlap Bug Fix: Placed found first so selected can override it visually */
         .cell.found { background: #2e7d32; color: #ffffff; }
         .cell.selected { background: #f1c40f !important; color: #121212 !important; transform: scale(0.9); }
 
@@ -97,6 +103,7 @@
         <span id="level-display"></span>
         <span id="lives-display"></span>
         <span id="timer-display">⏱️ 45s</span>
+        <button id="pause-btn" onclick="pauseGame()">⏸️</button>
     </div>
 
     <div id="game-area">
@@ -116,6 +123,11 @@
         <button class="ad-btn" onclick="watchAd()">📺 Watch Ad to Refill Lives</button>
     </div>
 
+    <div id="pause-screen" class="screen">
+        <h2>Game Paused ⏸️</h2>
+        <button onclick="resumeGame()">Resume Game</button>
+    </div>
+
     <script>
         const GRID_SIZE = 10;
         let masterWordBank = [];
@@ -126,7 +138,6 @@
         let wordsToFind = [];
         let selectedCell = null;
 
-        // Persistent Game State Variables
         let currentLevel = 1;
         let lives = 7;
         
@@ -138,6 +149,7 @@
         const wordListEl = document.getElementById('word-list');
         const winScreen = document.getElementById('win-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
+        const pauseScreen = document.getElementById('pause-screen');
         const instructionsEl = document.getElementById('instructions');
         const gameAreaEl = document.getElementById('game-area');
         const headerStatsEl = document.getElementById('header-stats');
@@ -146,7 +158,17 @@
         const levelDisplay = document.getElementById('level-display');
         const rewardMessage = document.getElementById('reward-message');
 
-        // Load saved data from localStorage
+        // --- 2. POKI SDK INITIALIZATION ---
+        PokiSDK.init().then(() => {
+            console.log("Poki SDK successfully initialized");
+            PokiSDK.gameLoadingStart(); // Tell Poki we are loading assets
+            loadWords();
+        }).catch(() => {
+            console.log("Initialized, but user has adblock");
+            PokiSDK.gameLoadingStart(); 
+            loadWords(); // Still let them play!
+        });
+
         function loadSaveData() {
             let savedLevel = parseInt(localStorage.getItem('wordFocus_level'));
             if (!isNaN(savedLevel)) currentLevel = savedLevel;
@@ -155,7 +177,7 @@
             if (!isNaN(savedLives) && savedLives > 0) {
                 lives = savedLives;
             } else {
-                lives = 7; // Reset if they are fully dead or new
+                lives = 7; 
             }
 
             let savedUsedWords = JSON.parse(localStorage.getItem('wordFocus_usedWords'));
@@ -180,10 +202,13 @@
                                      .map(w => w.trim().toUpperCase())
                                      .filter(w => w.length >= 3 && w.length <= GRID_SIZE);
                 
-                // Filter out words we have already used
                 availableWords = masterWordBank.filter(w => !usedWords.includes(w));
                 
                 instructionsEl.innerHTML = "Find the highlighted word before time runs out!";
+                
+                // --- 3. POKI SDK LOADING FINISHED ---
+                PokiSDK.gameLoadingFinished(); 
+                
                 initGame();
                 
             } catch (error) {
@@ -195,12 +220,17 @@
         function updateUI() {
             levelDisplay.innerText = `Level ${currentLevel}`;
             livesDisplay.innerText = '❤️'.repeat(lives);
-            saveGameData(); // Save whenever UI updates lives/level
+            saveGameData(); 
         }
 
+        // Modified to separate resetting time vs resuming time
         function startTimer() {
-            clearInterval(timerInterval);
             timeLeft = 45;
+            resumeTimer();
+        }
+
+        function resumeTimer() {
+            clearInterval(timerInterval);
             timerDisplay.innerText = `⏱️ ${timeLeft}s`;
             
             timerInterval = setInterval(() => {
@@ -213,38 +243,64 @@
             }, 1000);
         }
 
+        // --- 4. PAUSE GAME LOGIC ---
+        function pauseGame() {
+            clearInterval(timerInterval); // Stop timer
+            PokiSDK.gameplayStop();       // Tell Poki gameplay stopped
+
+            // Call commercial break. When it's over (or skipped), show pause screen.
+            PokiSDK.commercialBreak().then(() => {
+                gameAreaEl.style.display = "none";
+                pauseScreen.style.display = "flex";
+            });
+        }
+
+        function resumeGame() {
+            pauseScreen.style.display = "none";
+            gameAreaEl.style.display = "flex";
+            
+            PokiSDK.gameplayStart(); // Tell Poki gameplay started
+            resumeTimer();           // Start ticking from where we left off
+        }
+
         function loseLife() {
             clearInterval(timerInterval);
             lives--;
             updateUI();
 
             if (lives <= 0) {
-                // Game Over
+                PokiSDK.gameplayStop(); // Gameplay stops on game over
                 gameAreaEl.style.display = "none";
                 headerStatsEl.style.display = "none";
                 gameOverScreen.style.display = "flex";
             } else {
-                // Flash red, then restart timer for the same word
                 timerDisplay.style.color = "red";
                 setTimeout(() => {
                     timerDisplay.style.color = "#ff5252";
-                    startTimer();
+                    startTimer(); // Reset time for the retry
                 }, 500);
             }
         }
 
+        // --- 5. REWARDED AD LOGIC ---
         function watchAd() {
-            // This is where you will eventually call PokiSDK.rewardedBreak()
-            alert("Simulating Ad Play... 📺\n\nThanks for watching! Lives refilled.");
-            
-            lives = 7;
-            updateUI();
-            
-            gameOverScreen.style.display = "none";
-            headerStatsEl.style.display = "flex";
-            gameAreaEl.style.display = "flex";
-            
-            startTimer(); // Resume game
+            PokiSDK.rewardedBreak().then((success) => {
+                if (success) {
+                    // Player watched the ad completely!
+                    lives = 7;
+                    updateUI();
+                    
+                    gameOverScreen.style.display = "none";
+                    headerStatsEl.style.display = "flex";
+                    gameAreaEl.style.display = "flex";
+                    
+                    PokiSDK.gameplayStart(); // Gameplay starts again
+                    startTimer(); 
+                } else {
+                    // Player closed the ad early or ad failed to load
+                    alert("Ad was skipped! Try again to refill lives.");
+                }
+            });
         }
 
         function nextLevel() {
@@ -258,6 +314,7 @@
             gridEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
             winScreen.style.display = "none";
             gameOverScreen.style.display = "none";
+            pauseScreen.style.display = "none";
             headerStatsEl.style.display = "flex";
             gameAreaEl.style.display = "flex";
             
@@ -266,17 +323,13 @@
             
             updateUI();
 
-            // If we are out of words, reset the used words pool but keep the high level!
             if (availableWords.length < 6) {
                 usedWords = [];
                 availableWords = [...masterWordBank];
             }
 
-            // Pick 6 new random words
             availableWords.sort(() => 0.5 - Math.random());
             wordsToFind = availableWords.splice(0, 6);
-            
-            // Add them to usedWords and save, so they don't appear next time
             usedWords.push(...wordsToFind);
             saveGameData();
 
@@ -294,6 +347,8 @@
 
             renderGrid();
             renderWordList();
+            
+            PokiSDK.gameplayStart(); // Tell Poki a fresh level has started
             startTimer();
         }
 
@@ -400,10 +455,9 @@
                 currentWordIndex++; 
                 
                 if (currentWordIndex === wordsToFind.length) {
-                    // Level complete!
                     clearInterval(timerInterval);
+                    PokiSDK.gameplayStop(); // Tell Poki gameplay stopped for the win screen
                     
-                    // Strict Cap: Max 7 lives
                     if (lives < 7) {
                         lives++; 
                         rewardMessage.innerText = "+1 Life ❤️";
@@ -411,19 +465,19 @@
                         rewardMessage.innerText = "Max Lives! ❤️";
                     }
                     
-                    saveGameData(); // Save the new life count immediately
+                    saveGameData(); 
                     
                     gameAreaEl.style.display = "none";
                     headerStatsEl.style.display = "none";
                     winScreen.style.display = "flex";
                 } else {
                     renderWordList();
-                    startTimer();
+                    // Don't restart timer here, just let resumeTimer keep going so they don't get free time
                 }
             }
         }
 
-        loadWords();
+        // Removed direct loadWords() call here because it is now triggered inside PokiSDK.init()
     </script>
 </body>
 </html>
