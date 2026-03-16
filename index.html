@@ -106,7 +106,7 @@
 
     <div id="win-screen" class="screen">
         <h2>Level Complete! 🎯</h2>
-        <div class="reward-text">+1 Life ❤️</div>
+        <div class="reward-text" id="reward-message">+1 Life ❤️</div>
         <button onclick="nextLevel()">Next Level</button>
     </div>
 
@@ -144,6 +144,7 @@
         const livesDisplay = document.getElementById('lives-display');
         const timerDisplay = document.getElementById('timer-display');
         const levelDisplay = document.getElementById('level-display');
+        const rewardMessage = document.getElementById('reward-message');
 
         // Load saved data from localStorage
         function loadSaveData() {
@@ -401,7 +402,15 @@
                 if (currentWordIndex === wordsToFind.length) {
                     // Level complete!
                     clearInterval(timerInterval);
-                    lives++; // <--- Added the extra life!
+                    
+                    // Strict Cap: Max 7 lives
+                    if (lives < 7) {
+                        lives++; 
+                        rewardMessage.innerText = "+1 Life ❤️";
+                    } else {
+                        rewardMessage.innerText = "Max Lives! ❤️";
+                    }
+                    
                     saveGameData(); // Save the new life count immediately
                     
                     gameAreaEl.style.display = "none";
