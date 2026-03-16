@@ -15,10 +15,20 @@
 
         h1 { margin: 0 0 10px 0; font-size: 2rem; color: #ffffff; text-transform: uppercase; }
         
-        #instructions { font-size: 0.9rem; margin-bottom: 20px; color: #aaaaaa; text-align: center; }
+        #instructions { font-size: 0.9rem; margin-bottom: 10px; color: #aaaaaa; text-align: center; }
+
+        /* New Header Stats */
+        #header-stats {
+            display: none; justify-content: space-between; align-items: center;
+            width: 100%; max-width: 500px; margin-bottom: 15px;
+            font-size: 1.2rem; font-weight: bold; background: #1e1e1e;
+            padding: 10px 15px; border-radius: 8px; box-sizing: border-box;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        #timer-display { color: #ff5252; }
 
         #game-area {
-            display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 500px;
+            display: none; flex-direction: column; gap: 20px; width: 100%; max-width: 500px;
         }
 
         #grid {
@@ -48,20 +58,28 @@
             border-radius: 20px; background: #333333; color: #cccccc; transition: 0.3s;
         }
 
+        /* New Active Word Styling */
+        .word.active-word {
+            background: #f1c40f; color: #121212; transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+        }
+
         .word.found {
             text-decoration: line-through; background: #2e7d32; color: white; opacity: 0.6;
         }
 
-        #win-screen {
+        .screen {
             display: none; flex-direction: column; align-items: center;
-            margin-top: 20px; text-align: center;
+            margin-top: 20px; text-align: center; background: #1e1e1e;
+            padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
         }
 
         button {
             background: #3498db; color: white; border: none; padding: 12px 24px;
             font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-family: inherit;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-family: inherit; margin-top: 15px;
         }
+        button.ad-btn { background: #e67e22; }
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
     </style>
@@ -71,14 +89,25 @@
     <h1>Word Focus</h1>
     <div id="instructions">Loading words...</div>
 
-    <div id="game-area" style="display: none;">
+    <div id="header-stats">
+        <span id="lives-display"></span>
+        <span id="timer-display">⏱️ 45s</span>
+    </div>
+
+    <div id="game-area">
         <div id="grid"></div>
         <div id="word-list"></div>
     </div>
 
-    <div id="win-screen">
-        <h2>Notebook Cleared! 🖊️</h2>
-        <button onclick="initGame()">Generate New Puzzle</button>
+    <div id="win-screen" class="screen">
+        <h2>Level Complete! 🎯</h2>
+        <button onclick="initGame()">Next Level</button>
+    </div>
+
+    <div id="game-over-screen" class="screen">
+        <h2>Out of Lives! 💔</h2>
+        <p>You ran out of time.</p>
+        <button class="ad-btn" onclick="watchAd()">📺 Watch Ad to Refill Lives</button>
     </div>
 
     <script>
@@ -88,55 +117,119 @@
         
         let grid = [];
         let wordsToFind = [];
-        let foundWordsCount = 0;
         let selectedCell = null;
+
+        // New Game State Variables
+        let currentWordIndex = 0;
+        let lives = 7;
+        let timeLeft = 45;
+        let timerInterval = null;
 
         const gridEl = document.getElementById('grid');
         const wordListEl = document.getElementById('word-list');
         const winScreen = document.getElementById('win-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
         const instructionsEl = document.getElementById('instructions');
         const gameAreaEl = document.getElementById('game-area');
+        const headerStatsEl = document.getElementById('header-stats');
+        const livesDisplay = document.getElementById('lives-display');
+        const timerDisplay = document.getElementById('timer-display');
 
-        // Fetch words from the text file
         async function loadWords() {
             try {
                 const response = await fetch('words.txt');
                 if (!response.ok) throw new Error("File not found");
                 
                 const text = await response.text();
-                // Split by line, trim, uppercase, and filter out words that are too long or empty
                 masterWordBank = text.split(/\r?\n/)
                                      .map(w => w.trim().toUpperCase())
                                      .filter(w => w.length >= 3 && w.length <= GRID_SIZE);
                 
                 availableWords = [...masterWordBank];
                 
-                instructionsEl.innerHTML = "Tap the <b>FIRST</b> letter, then tap the <b>LAST</b> letter.";
-                gameAreaEl.style.display = "flex";
+                instructionsEl.innerHTML = "Find the highlighted word before time runs out!";
                 initGame();
                 
             } catch (error) {
-                instructionsEl.innerHTML = "<span style='color: #ff5252;'>Error: Could not load words.txt. Are you running a local web server?</span>";
+                instructionsEl.innerHTML = "<span style='color: #ff5252;'>Error: Could not load words.txt.</span>";
                 console.error(error);
             }
         }
 
+        function updateLivesUI() {
+            livesDisplay.innerText = '❤️'.repeat(lives);
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 45;
+            timerDisplay.innerText = `⏱️ ${timeLeft}s`;
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.innerText = `⏱️ ${timeLeft}s`;
+                
+                if (timeLeft <= 0) {
+                    loseLife();
+                }
+            }, 1000);
+        }
+
+        function loseLife() {
+            clearInterval(timerInterval);
+            lives--;
+            updateLivesUI();
+
+            if (lives <= 0) {
+                // Game Over
+                gameAreaEl.style.display = "none";
+                headerStatsEl.style.display = "none";
+                gameOverScreen.style.display = "flex";
+            } else {
+                // Flash red, then restart timer for the same word
+                timerDisplay.style.color = "red";
+                setTimeout(() => {
+                    timerDisplay.style.color = "#ff5252";
+                    startTimer();
+                }, 500);
+            }
+        }
+
+        function watchAd() {
+            // This is where you will eventually call PokiSDK.rewardedBreak()
+            alert("Simulating Ad Play... 📺\n\nThanks for watching! Lives refilled.");
+            
+            lives = 7;
+            updateLivesUI();
+            
+            gameOverScreen.style.display = "none";
+            headerStatsEl.style.display = "flex";
+            gameAreaEl.style.display = "flex";
+            
+            startTimer(); // Resume game
+        }
+
         function initGame() {
+            clearInterval(timerInterval);
             gridEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
             winScreen.style.display = "none";
+            gameOverScreen.style.display = "none";
+            headerStatsEl.style.display = "flex";
+            gameAreaEl.style.display = "flex";
+            
             selectedCell = null;
-            foundWordsCount = 0;
+            currentWordIndex = 0;
+            
+            // Only reset lives if starting fresh, otherwise keep current lives for next level
+            if (lives <= 0) lives = 7; 
+            updateLivesUI();
 
-            // Refill words if we are running out
             if (availableWords.length < 6) {
-                alert("You've found all the words! Refilling the word bank.");
                 availableWords = [...masterWordBank];
             }
 
-            // Shuffle available words and extract the first 6 (this prevents repeats in the session)
             availableWords.sort(() => 0.5 - Math.random());
             wordsToFind = availableWords.splice(0, 6);
-
             grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(''));
 
             wordsToFind.forEach(word => placeWord(word));
@@ -152,14 +245,11 @@
 
             renderGrid();
             renderWordList();
+            startTimer(); // Start the clock for the first word!
         }
 
         function placeWord(word) {
-            const dirs = [
-                [0, 1], [1, 0], [1, 1], [-1, 1], 
-                [0, -1], [-1, 0], [-1, -1], [1, -1] 
-            ];
-
+            const dirs = [ [0, 1], [1, 0], [1, 1], [-1, 1], [0, -1], [-1, 0], [-1, -1], [1, -1] ];
             let placed = false;
             let attempts = 0;
 
@@ -205,11 +295,19 @@
 
         function renderWordList() {
             wordListEl.innerHTML = '';
-            wordsToFind.forEach(word => {
+            wordsToFind.forEach((word, index) => {
                 let wordEl = document.createElement('div');
                 wordEl.className = 'word';
                 wordEl.id = `word-${word}`;
                 wordEl.innerText = word;
+                
+                // Add classes based on game state
+                if (index < currentWordIndex) {
+                    wordEl.classList.add('found');
+                } else if (index === currentWordIndex) {
+                    wordEl.classList.add('active-word');
+                }
+                
                 wordListEl.appendChild(wordEl);
             });
         }
@@ -224,21 +322,14 @@
                 return;
             }
 
-            let r1 = selectedCell.r;
-            let c1 = selectedCell.c;
-            let r2 = r;
-            let c2 = c;
-
+            let r1 = selectedCell.r, c1 = selectedCell.c, r2 = r, c2 = c;
             document.querySelector(`.cell[data-r='${r1}'][data-c='${c1}']`).classList.remove('selected');
             selectedCell = null;
 
-            let dr = r2 - r1;
-            let dc = c2 - c1;
+            let dr = r2 - r1, dc = c2 - c1;
             let steps = Math.max(Math.abs(dr), Math.abs(dc));
 
-            if (steps === 0) return; 
-
-            if (Math.abs(dr) !== Math.abs(dc) && dr !== 0 && dc !== 0) return;
+            if (steps === 0 || (Math.abs(dr) !== Math.abs(dc) && dr !== 0 && dc !== 0)) return; 
 
             dr = dr === 0 ? 0 : dr / Math.abs(dr); 
             dc = dc === 0 ? 0 : dc / Math.abs(dc);
@@ -246,31 +337,36 @@
             let selectedString = "";
             let path = [];
             for (let i = 0; i <= steps; i++) {
-                let nr = r1 + i * dr;
-                let nc = c1 + i * dc;
+                let nr = r1 + i * dr, nc = c1 + i * dc;
                 selectedString += grid[nr][nc];
                 path.push({ r: nr, c: nc });
             }
 
-            let match = wordsToFind.find(w => w === selectedString || w === selectedString.split('').reverse().join(''));
+            // ONLY check against the current active word
+            let activeWord = wordsToFind[currentWordIndex];
+            let match = (activeWord === selectedString || activeWord === selectedString.split('').reverse().join(''));
 
             if (match) {
-                let wordDom = document.getElementById(`word-${match}`);
-                if (!wordDom.classList.contains('found')) {
-                    wordDom.classList.add('found');
-                    path.forEach(pos => {
-                        document.querySelector(`.cell[data-r='${pos.r}'][data-c='${pos.c}']`).classList.add('found');
-                    });
-                    
-                    foundWordsCount++;
-                    if (foundWordsCount === wordsToFind.length) {
-                        winScreen.style.display = "flex";
-                    }
+                path.forEach(pos => {
+                    document.querySelector(`.cell[data-r='${pos.r}'][data-c='${pos.c}']`).classList.add('found');
+                });
+                
+                currentWordIndex++; // Move to next word
+                
+                if (currentWordIndex === wordsToFind.length) {
+                    // Level complete!
+                    clearInterval(timerInterval);
+                    gameAreaEl.style.display = "none";
+                    headerStatsEl.style.display = "none";
+                    winScreen.style.display = "flex";
+                } else {
+                    // Refresh word list to highlight next word and reset timer
+                    renderWordList();
+                    startTimer();
                 }
             }
         }
 
-        // Start game by loading words
         loadWords();
     </script>
 </body>
