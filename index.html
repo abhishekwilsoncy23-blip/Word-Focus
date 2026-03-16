@@ -17,14 +17,15 @@
         
         #instructions { font-size: 0.9rem; margin-bottom: 10px; color: #aaaaaa; text-align: center; }
 
-        /* New Header Stats */
+        /* Header Stats */
         #header-stats {
             display: none; justify-content: space-between; align-items: center;
             width: 100%; max-width: 500px; margin-bottom: 15px;
-            font-size: 1.2rem; font-weight: bold; background: #1e1e1e;
+            font-size: 1.1rem; font-weight: bold; background: #1e1e1e;
             padding: 10px 15px; border-radius: 8px; box-sizing: border-box;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
+        #level-display { color: #3498db; }
         #timer-display { color: #ff5252; }
 
         #game-area {
@@ -44,8 +45,10 @@
         }
 
         .cell:hover { background: #3a3a3a; }
-        .cell.selected { background: #f1c40f; color: #121212; transform: scale(0.9); }
-        .cell.found { background: #2e7d32; color: #ffffff; pointer-events: none; }
+        
+        /* Overlap Bug Fix: Placed found first so selected can override it visually */
+        .cell.found { background: #2e7d32; color: #ffffff; }
+        .cell.selected { background: #f1c40f !important; color: #121212 !important; transform: scale(0.9); }
 
         #word-list {
             display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
@@ -58,7 +61,6 @@
             border-radius: 20px; background: #333333; color: #cccccc; transition: 0.3s;
         }
 
-        /* New Active Word Styling */
         .word.active-word {
             background: #f1c40f; color: #121212; transform: scale(1.1);
             box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
@@ -90,6 +92,7 @@
     <div id="instructions">Loading words...</div>
 
     <div id="header-stats">
+        <span id="level-display"></span>
         <span id="lives-display"></span>
         <span id="timer-display">⏱️ 45s</span>
     </div>
@@ -101,7 +104,7 @@
 
     <div id="win-screen" class="screen">
         <h2>Level Complete! 🎯</h2>
-        <button onclick="initGame()">Next Level</button>
+        <button onclick="nextLevel()">Next Level</button>
     </div>
 
     <div id="game-over-screen" class="screen">
@@ -114,14 +117,17 @@
         const GRID_SIZE = 10;
         let masterWordBank = [];
         let availableWords = [];
+        let usedWords = [];
         
         let grid = [];
         let wordsToFind = [];
         let selectedCell = null;
 
-        // New Game State Variables
-        let currentWordIndex = 0;
+        // Persistent Game State Variables
+        let currentLevel = 1;
         let lives = 7;
+        
+        let currentWordIndex = 0;
         let timeLeft = 45;
         let timerInterval = null;
 
@@ -134,9 +140,34 @@
         const headerStatsEl = document.getElementById('header-stats');
         const livesDisplay = document.getElementById('lives-display');
         const timerDisplay = document.getElementById('timer-display');
+        const levelDisplay = document.getElementById('level-display');
+
+        // Load saved data from localStorage
+        function loadSaveData() {
+            let savedLevel = parseInt(localStorage.getItem('wordFocus_level'));
+            if (!isNaN(savedLevel)) currentLevel = savedLevel;
+
+            let savedLives = parseInt(localStorage.getItem('wordFocus_lives'));
+            if (!isNaN(savedLives) && savedLives > 0) {
+                lives = savedLives;
+            } else {
+                lives = 7; // Reset if they are fully dead or new
+            }
+
+            let savedUsedWords = JSON.parse(localStorage.getItem('wordFocus_usedWords'));
+            if (savedUsedWords) usedWords = savedUsedWords;
+        }
+
+        function saveGameData() {
+            localStorage.setItem('wordFocus_level', currentLevel);
+            localStorage.setItem('wordFocus_lives', lives);
+            localStorage.setItem('wordFocus_usedWords', JSON.stringify(usedWords));
+        }
 
         async function loadWords() {
             try {
+                loadSaveData();
+
                 const response = await fetch('words.txt');
                 if (!response.ok) throw new Error("File not found");
                 
@@ -145,7 +176,8 @@
                                      .map(w => w.trim().toUpperCase())
                                      .filter(w => w.length >= 3 && w.length <= GRID_SIZE);
                 
-                availableWords = [...masterWordBank];
+                // Filter out words we have already used
+                availableWords = masterWordBank.filter(w => !usedWords.includes(w));
                 
                 instructionsEl.innerHTML = "Find the highlighted word before time runs out!";
                 initGame();
@@ -156,8 +188,10 @@
             }
         }
 
-        function updateLivesUI() {
+        function updateUI() {
+            levelDisplay.innerText = `Level ${currentLevel}`;
             livesDisplay.innerText = '❤️'.repeat(lives);
+            saveGameData(); // Save whenever UI updates lives/level
         }
 
         function startTimer() {
@@ -178,7 +212,7 @@
         function loseLife() {
             clearInterval(timerInterval);
             lives--;
-            updateLivesUI();
+            updateUI();
 
             if (lives <= 0) {
                 // Game Over
@@ -200,13 +234,19 @@
             alert("Simulating Ad Play... 📺\n\nThanks for watching! Lives refilled.");
             
             lives = 7;
-            updateLivesUI();
+            updateUI();
             
             gameOverScreen.style.display = "none";
             headerStatsEl.style.display = "flex";
             gameAreaEl.style.display = "flex";
             
             startTimer(); // Resume game
+        }
+
+        function nextLevel() {
+            currentLevel++;
+            saveGameData();
+            initGame();
         }
 
         function initGame() {
@@ -220,18 +260,23 @@
             selectedCell = null;
             currentWordIndex = 0;
             
-            // Only reset lives if starting fresh, otherwise keep current lives for next level
-            if (lives <= 0) lives = 7; 
-            updateLivesUI();
+            updateUI();
 
+            // If we are out of words, reset the used words pool but keep the high level!
             if (availableWords.length < 6) {
+                usedWords = [];
                 availableWords = [...masterWordBank];
             }
 
+            // Pick 6 new random words
             availableWords.sort(() => 0.5 - Math.random());
             wordsToFind = availableWords.splice(0, 6);
-            grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(''));
+            
+            // Add them to usedWords and save, so they don't appear next time
+            usedWords.push(...wordsToFind);
+            saveGameData();
 
+            grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(''));
             wordsToFind.forEach(word => placeWord(word));
 
             const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -245,7 +290,7 @@
 
             renderGrid();
             renderWordList();
-            startTimer(); // Start the clock for the first word!
+            startTimer();
         }
 
         function placeWord(word) {
@@ -301,7 +346,6 @@
                 wordEl.id = `word-${word}`;
                 wordEl.innerText = word;
                 
-                // Add classes based on game state
                 if (index < currentWordIndex) {
                     wordEl.classList.add('found');
                 } else if (index === currentWordIndex) {
@@ -314,7 +358,8 @@
 
         function handleCellClick(r, c) {
             let cellEl = document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`);
-            if (cellEl.classList.contains('found')) return;
+            
+            // BUG FIX: Removed the line that blocked clicking 'found' letters!
 
             if (!selectedCell) {
                 selectedCell = { r, c };
@@ -342,7 +387,6 @@
                 path.push({ r: nr, c: nc });
             }
 
-            // ONLY check against the current active word
             let activeWord = wordsToFind[currentWordIndex];
             let match = (activeWord === selectedString || activeWord === selectedString.split('').reverse().join(''));
 
@@ -351,7 +395,7 @@
                     document.querySelector(`.cell[data-r='${pos.r}'][data-c='${pos.c}']`).classList.add('found');
                 });
                 
-                currentWordIndex++; // Move to next word
+                currentWordIndex++; 
                 
                 if (currentWordIndex === wordsToFind.length) {
                     // Level complete!
@@ -360,7 +404,6 @@
                     headerStatsEl.style.display = "none";
                     winScreen.style.display = "flex";
                 } else {
-                    // Refresh word list to highlight next word and reset timer
                     renderWordList();
                     startTimer();
                 }
