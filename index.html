@@ -84,6 +84,8 @@
         button.ad-btn { background: #e67e22; }
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
+        .reward-text { color: #4CAF50; font-size: 1.5rem; margin-top: 5px; margin-bottom: 15px;}
+
     </style>
 </head>
 <body>
@@ -104,6 +106,7 @@
 
     <div id="win-screen" class="screen">
         <h2>Level Complete! 🎯</h2>
+        <div class="reward-text">+1 Life ❤️</div>
         <button onclick="nextLevel()">Next Level</button>
     </div>
 
@@ -359,8 +362,6 @@
         function handleCellClick(r, c) {
             let cellEl = document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`);
             
-            // BUG FIX: Removed the line that blocked clicking 'found' letters!
-
             if (!selectedCell) {
                 selectedCell = { r, c };
                 cellEl.classList.add('selected');
@@ -400,6 +401,9 @@
                 if (currentWordIndex === wordsToFind.length) {
                     // Level complete!
                     clearInterval(timerInterval);
+                    lives++; // <--- Added the extra life!
+                    saveGameData(); // Save the new life count immediately
+                    
                     gameAreaEl.style.display = "none";
                     headerStatsEl.style.display = "none";
                     winScreen.style.display = "flex";
