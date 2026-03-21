@@ -88,8 +88,6 @@
         button:hover { background: #2980b9; }
         button.ad-btn { background: #e67e22; }
         button.ad-btn:hover { background: #d35400; }
-        button.close-btn { background: #e74c3c; }
-        button.close-btn:hover { background: #c0392b; }
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
         .reward-text { color: #4CAF50; font-size: 1.5rem; margin-top: 5px; margin-bottom: 15px;}
@@ -133,7 +131,6 @@
         <h2>Out of Lives!</h2>
         <p>You ran out of time.</p>
         <button class="ad-btn" onclick="watchAdToContinue()">📺 Watch Ad to Refill Lives</button>
-        <button class="close-btn" onclick="restartLevel()">🔄 Restart Level</button>
     </div>
 
     <div id="pause-screen" class="screen">
@@ -154,7 +151,6 @@
                 gameplayStart: () => {},
                 gameplayStop: () => {},
                 commercialBreak: () => Promise.resolve(),
-                // FIXED: Changed to return true so local testing allows the ad sequence to work
                 rewardedBreak: () => Promise.resolve(true) 
             };
         }
@@ -235,8 +231,15 @@
         function loadSaveData() {
             let savedLevel = parseInt(localStorage.getItem('wordFocus_level'));
             if (!isNaN(savedLevel)) currentLevel = savedLevel;
-            let savedLives = parseInt(localStorage.getItem('wordFocus_lives'));
-            if (!isNaN(savedLives) && savedLives > 0) { lives = savedLives; } else { lives = 7; }
+            
+            // FIXED: Properly handle 0 lives from localStorage
+            let savedLives = localStorage.getItem('wordFocus_lives');
+            if (savedLives !== null && !isNaN(parseInt(savedLives))) { 
+                lives = parseInt(savedLives); 
+            } else { 
+                lives = 7; 
+            }
+            
             let savedUsedWords = JSON.parse(localStorage.getItem('wordFocus_usedWords'));
             if (savedUsedWords) usedWords = savedUsedWords;
         }
@@ -333,7 +336,7 @@
             }
         }
 
-        // --- NEW PAUSE MENU AD LOGIC ---
+        // --- PAUSE MENU AD LOGIC ---
         function watchAdToRefillLives() {
             soundClick();
             
@@ -344,8 +347,8 @@
 
             PokiSDK.rewardedBreak().then((success) => {
                 if (success) {
-                    lives = 7; // Refill lives to max
-                    updateUI(); // Updates the hearts on the screen
+                    lives = 7; 
+                    updateUI(); 
                 } else {
                     alert("Ad was skipped or failed! Lives not refilled.");
                 }
@@ -360,22 +363,14 @@
                     lives = 7;
                     updateUI();
                     gameOverScreen.style.display = "none";
-                    headerStatsEl.style.display = "flex";
-                    gameAreaEl.style.display = "flex";
-                    PokiSDK.gameplayStart(); 
-                    startTimer(); 
+                    
+                    // Restart the level immediately after watching the ad
+                    initGame(); 
                 } else {
-                    alert("Ad was skipped or failed! Try again, or restart the level.");
+                    alert("Ad was skipped or failed! Try again to refill lives.");
                 }
             });
         }
-
-        function restartLevel() {
-            soundSelect();
-            lives = 7; // Refill lives
-            initGame(); // Restarts the current level grid and timer
-        }
-        // ---------------------------
 
         function nextLevel() {
             soundSelect();
@@ -386,6 +381,18 @@
 
         function initGame() {
             clearInterval(timerInterval);
+            
+            // GUARD: If they refreshed the page with 0 lives, force them to the Ad screen
+            if (lives <= 0) {
+                startScreen.style.display = "none";
+                headerStatsEl.style.display = "none";
+                gameAreaEl.style.display = "none";
+                winScreen.style.display = "none";
+                pauseScreen.style.display = "none";
+                gameOverScreen.style.display = "flex";
+                return; // Stop initialization entirely
+            }
+
             gridEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
             winScreen.style.display = "none";
             gameOverScreen.style.display = "none";
