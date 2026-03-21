@@ -95,18 +95,6 @@
         .reward-text { color: #4CAF50; font-size: 1.5rem; margin-top: 5px; margin-bottom: 15px;}
         .emoji-art { font-size: 4rem; margin-bottom: 15px; }
 
-        /* Custom Ad Dialog Overlay */
-        #adOverlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.85); z-index: 2000;
-            justify-content: center; align-items: center;
-        }
-        .ad-dialog-box {
-            background: #1e1e1e; padding: 30px; border-radius: 12px;
-            text-align: center; width: 90%; max-width: 350px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 2px solid #333;
-        }
-
     </style>
 </head>
 <body>
@@ -144,25 +132,14 @@
         <div class="emoji-art">⏰</div>
         <h2>Out of Lives!</h2>
         <p>You ran out of time.</p>
-        <button class="ad-btn" onclick="openAdDialog()">📺 Watch Ad to Continue</button>
+        <button class="ad-btn" onclick="watchAdToContinue()">📺 Watch Ad to Refill Lives</button>
+        <button class="close-btn" onclick="restartLevel()">🔄 Restart Level</button>
     </div>
 
     <div id="pause-screen" class="screen">
         <div class="emoji-art">☕</div>
         <h2>Game Paused</h2>
         <button onclick="resumeGame()">Resume Game</button>
-    </div>
-
-    <div id="adOverlay">
-        <div class="ad-dialog-box">
-            <div class="emoji-art" style="font-size: 3rem;">📺</div>
-            <h2 style="margin-top: 0;">Watch an Ad?</h2>
-            <p style="color: #aaa; margin-bottom: 20px;">Watch a short video to refill your lives and continue your game!</p>
-            
-            <button class="ad-btn" onclick="triggerActualAd()">▶ Watch Video</button>
-            
-            <button class="close-btn" onclick="closeAdDialog()">✖ Close</button>
-        </div>
     </div>
 
     <script>
@@ -176,7 +153,8 @@
                 gameplayStart: () => {},
                 gameplayStop: () => {},
                 commercialBreak: () => Promise.resolve(),
-                rewardedBreak: () => Promise.resolve(false)
+                // FIXED: Changed to return true so local testing allows the ad sequence to work
+                rewardedBreak: () => Promise.resolve(true) 
             };
         }
 
@@ -354,25 +332,10 @@
             }
         }
 
-        // --- NEW AD DIALOG LOGIC ---
-        function openAdDialog() {
+        // --- CLEANED UP AD LOGIC ---
+        function watchAdToContinue() {
             soundClick();
-            // Opens the overlay strictly for viewing
-            document.getElementById("adOverlay").style.display = "flex";
-        }
-
-        function closeAdDialog() {
-            soundClick();
-            // This is exactly what you asked for. It closes the box and does NOTHING else.
-            document.getElementById("adOverlay").style.display = "none";
-        }
-
-        function triggerActualAd() {
-            soundClick();
-            // Hide the custom dialog first
-            document.getElementById("adOverlay").style.display = "none";
-            
-            // Resume the Poki API flow
+            // Directly trigger the Poki API flow
             PokiSDK.rewardedBreak().then((success) => {
                 if (success) {
                     lives = 7;
@@ -383,9 +346,15 @@
                     PokiSDK.gameplayStart(); 
                     startTimer(); 
                 } else {
-                    alert("Ad was skipped! Try again to continue.");
+                    alert("Ad was skipped or failed! Try again, or restart the level.");
                 }
             });
+        }
+
+        function restartLevel() {
+            soundSelect();
+            lives = 7; // Refill lives
+            initGame(); // Restarts the current level grid and timer
         }
         // ---------------------------
 
