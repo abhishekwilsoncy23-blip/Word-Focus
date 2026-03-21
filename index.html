@@ -77,7 +77,6 @@
             width: 100%; max-width: 400px; box-sizing: border-box;
         }
 
-        /* Show start screen by default when words finish loading */
         #start-screen { display: none; } 
 
         button {
@@ -89,10 +88,24 @@
         button:hover { background: #2980b9; }
         button.ad-btn { background: #e67e22; }
         button.ad-btn:hover { background: #d35400; }
+        button.close-btn { background: #e74c3c; }
+        button.close-btn:hover { background: #c0392b; }
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
         .reward-text { color: #4CAF50; font-size: 1.5rem; margin-top: 5px; margin-bottom: 15px;}
         .emoji-art { font-size: 4rem; margin-bottom: 15px; }
+
+        /* Custom Ad Dialog Overlay */
+        #adOverlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.85); z-index: 2000;
+            justify-content: center; align-items: center;
+        }
+        .ad-dialog-box {
+            background: #1e1e1e; padding: 30px; border-radius: 12px;
+            text-align: center; width: 90%; max-width: 350px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 2px solid #333;
+        }
 
     </style>
 </head>
@@ -131,13 +144,25 @@
         <div class="emoji-art">⏰</div>
         <h2>Out of Lives!</h2>
         <p>You ran out of time.</p>
-        <button class="ad-btn" onclick="watchAd()">📺 Watch Ad to Continue</button>
+        <button class="ad-btn" onclick="openAdDialog()">📺 Watch Ad to Continue</button>
     </div>
 
     <div id="pause-screen" class="screen">
         <div class="emoji-art">☕</div>
         <h2>Game Paused</h2>
         <button onclick="resumeGame()">Resume Game</button>
+    </div>
+
+    <div id="adOverlay">
+        <div class="ad-dialog-box">
+            <div class="emoji-art" style="font-size: 3rem;">📺</div>
+            <h2 style="margin-top: 0;">Watch an Ad?</h2>
+            <p style="color: #aaa; margin-bottom: 20px;">Watch a short video to refill your lives and continue your game!</p>
+            
+            <button class="ad-btn" onclick="triggerActualAd()">▶ Watch Video</button>
+            
+            <button class="close-btn" onclick="closeAdDialog()">✖ Close</button>
+        </div>
     </div>
 
     <script>
@@ -158,7 +183,6 @@
         // --- SYNTHETIC AUDIO SYSTEM ---
         let audioCtx;
         function initAudio() {
-            // Browsers require audio context to start ONLY after a user clicks something.
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
@@ -181,15 +205,15 @@
         function soundClick() { playTone(400, 'sine', 0.1); }
         function soundSelect() { playTone(600, 'sine', 0.15); }
         function soundMatch() {
-            playTone(523.25, 'sine', 0.1); // C5
-            setTimeout(() => playTone(659.25, 'sine', 0.15), 100); // E5
-            setTimeout(() => playTone(783.99, 'sine', 0.2), 200); // G5
+            playTone(523.25, 'sine', 0.1); 
+            setTimeout(() => playTone(659.25, 'sine', 0.15), 100); 
+            setTimeout(() => playTone(783.99, 'sine', 0.2), 200); 
         }
         function soundWin() {
             playTone(523.25, 'square', 0.15, 0.03); 
             setTimeout(() => playTone(659.25, 'square', 0.15, 0.03), 150); 
             setTimeout(() => playTone(783.99, 'square', 0.15, 0.03), 300); 
-            setTimeout(() => playTone(1046.50, 'square', 0.4, 0.03), 450); // C6
+            setTimeout(() => playTone(1046.50, 'square', 0.4, 0.03), 450); 
         }
         function soundLose() {
             playTone(400, 'sawtooth', 0.3, 0.03);
@@ -256,7 +280,6 @@
                 instructionsEl.style.display = "none"; 
                 PokiSDK.gameLoadingFinished(); 
                 
-                // Show Main Menu instead of auto-starting
                 startScreen.style.display = "flex"; 
             } catch (error) {
                 instructionsEl.innerHTML = "<span style='color: #ff5252;'>Error: Could not load words.txt.</span>";
@@ -265,7 +288,7 @@
         }
 
         function startGameFromMenu() {
-            initAudio(); // Boot up the sound engine!
+            initAudio(); 
             soundSelect();
             startScreen.style.display = "none";
             initGame();
@@ -331,8 +354,25 @@
             }
         }
 
-        function watchAd() {
+        // --- NEW AD DIALOG LOGIC ---
+        function openAdDialog() {
             soundClick();
+            // Opens the overlay strictly for viewing
+            document.getElementById("adOverlay").style.display = "flex";
+        }
+
+        function closeAdDialog() {
+            soundClick();
+            // This is exactly what you asked for. It closes the box and does NOTHING else.
+            document.getElementById("adOverlay").style.display = "none";
+        }
+
+        function triggerActualAd() {
+            soundClick();
+            // Hide the custom dialog first
+            document.getElementById("adOverlay").style.display = "none";
+            
+            // Resume the Poki API flow
             PokiSDK.rewardedBreak().then((success) => {
                 if (success) {
                     lives = 7;
@@ -347,6 +387,7 @@
                 }
             });
         }
+        // ---------------------------
 
         function nextLevel() {
             soundSelect();
@@ -454,13 +495,13 @@
             let cellEl = document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`);
             
             if (!selectedCell) {
-                soundClick(); // Play sound on first click
+                soundClick(); 
                 selectedCell = { r, c };
                 cellEl.classList.add('selected');
                 return;
             }
 
-            soundSelect(); // Play slightly different sound on second click
+            soundSelect(); 
 
             let r1 = selectedCell.r, c1 = selectedCell.c, r2 = r, c2 = c;
             document.querySelector(`.cell[data-r='${r1}'][data-c='${c1}']`).classList.remove('selected');
@@ -486,7 +527,7 @@
             let match = (activeWord === selectedString || activeWord === selectedString.split('').reverse().join(''));
 
             if (match) {
-                soundMatch(); // Play happy chime on word find!
+                soundMatch(); 
                 
                 path.forEach(pos => {
                     document.querySelector(`.cell[data-r='${pos.r}'][data-c='${pos.c}']`).classList.add('found');
@@ -498,7 +539,7 @@
                     clearInterval(timerInterval);
                     PokiSDK.gameplayStop(); 
                     
-                    setTimeout(() => soundWin(), 300); // Play level win sound
+                    setTimeout(() => soundWin(), 300); 
                     
                     if (lives < 7) {
                         lives++; 
