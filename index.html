@@ -140,6 +140,7 @@
         <div class="emoji-art">☕</div>
         <h2>Game Paused</h2>
         <button onclick="resumeGame()">Resume Game</button>
+        <button class="ad-btn" onclick="watchAdToRefillLives()">📺 Watch Ad to Refill Lives</button>
     </div>
 
     <script>
@@ -332,10 +333,28 @@
             }
         }
 
-        // --- CLEANED UP AD LOGIC ---
+        // --- NEW PAUSE MENU AD LOGIC ---
+        function watchAdToRefillLives() {
+            soundClick();
+            
+            if (lives >= 7) {
+                alert("You already have maximum lives! ❤️");
+                return;
+            }
+
+            PokiSDK.rewardedBreak().then((success) => {
+                if (success) {
+                    lives = 7; // Refill lives to max
+                    updateUI(); // Updates the hearts on the screen
+                } else {
+                    alert("Ad was skipped or failed! Lives not refilled.");
+                }
+            });
+        }
+
+        // --- GAME OVER AD LOGIC ---
         function watchAdToContinue() {
             soundClick();
-            // Directly trigger the Poki API flow
             PokiSDK.rewardedBreak().then((success) => {
                 if (success) {
                     lives = 7;
