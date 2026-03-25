@@ -166,24 +166,12 @@
     </div>
 
     <script>
-        // --- BULLETPROOF POKI FALLBACK ---
-        if (typeof PokiSDK === 'undefined') {
-            window.PokiSDK = {
-                init: () => Promise.resolve(),
-                gameLoadingStart: () => {},
-                gameLoadingFinished: () => {},
-                gameplayStart: () => {},
-                gameplayStop: () => {},
-                commercialBreak: () => Promise.resolve(),
-                rewardedBreak: () => Promise.resolve(true) 
-            };
-        }
-
-        // 1. POKI: Initialize immediately (Do not wait for DOMContentLoaded)
+        // 1. POKI: Initialize immediately 
+        // (Do NOT use a custom fallback block; Poki's v2 script handles local testing automatically!)
         PokiSDK.init().then(() => {
             console.log("Poki SDK successfully initialized");
         }).catch(() => {
-            console.log("Initialized Poki SDK with fallback");
+            console.log("Poki SDK initialized (Adblock or local environment)");
         });
 
         // 2. POKI: Fire loading start immediately as the script runs
