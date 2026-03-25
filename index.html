@@ -13,11 +13,12 @@
             margin: 0; background-color: #121212; color: #e0e0e0;
             font-family: 'Courier New', Courier, monospace;
             display: flex; flex-direction: column; align-items: center; 
-            height: 100vh; /* Fallback */
-            height: 100dvh; /* Dynamic viewport for mobile browsers */
+            min-height: 100vh; /* Allows expanding beyond screen height */
+            min-height: 100dvh; /* Dynamic viewport for mobile browsers */
             width: 100vw; padding: 2dvh 2vw; box-sizing: border-box;
             user-select: none; touch-action: manipulation;
-            overflow: hidden; /* Lock the screen */
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+            overflow-y: auto; /* Scroll entire page vertically when needed */
         }
 
         h1 { margin: 0 0 1vh 0; font-size: clamp(1.2rem, 4dvh, 2rem); color: #ffffff; text-transform: uppercase; text-align: center; flex-shrink: 0; }
@@ -48,13 +49,12 @@
             display: none; flex-direction: column; gap: 2dvh; 
             width: 100%; max-width: 1200px;
             align-items: center; justify-content: center;
-            flex: 1; min-height: 0; /* Critical for shrink-to-fit flex children */
+            flex: 1; min-height: 0; 
         }
 
         #grid {
             display: grid; gap: 2px; background: #333333; padding: 4px;
             border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            /* Calculate max size to always fit on screen, leaving room for UI */
             width: 100%; max-width: min(90vw, 55dvh);
             aspect-ratio: 1; flex-shrink: 0;
         }
@@ -62,7 +62,6 @@
         .cell {
             background: #242424; color: #e0e0e0; aspect-ratio: 1; display: flex; 
             align-items: center; justify-content: center;
-            /* Auto-scaling font based on container */
             font-size: clamp(0.8rem, min(5vw, 4dvh), 2.5rem); 
             font-weight: bold; cursor: pointer;
             border-radius: 4px; transition: 0.2s;
@@ -119,7 +118,6 @@
                 gap: 4vw;
             }
             #grid {
-                /* On wide screens, grid takes priority height */
                 max-width: min(65vw, 75dvh); 
             }
             #word-list {
@@ -270,7 +268,7 @@
 
         // --- GAME VARIABLES ---
         const GRID_SIZE = 10;
-        const AD_FREQUENCY = 3; // <--- EDIT THIS VARIABLE to control mid-roll ad frequency!
+        const AD_FREQUENCY = 3; 
         const WORDS_URL = 'words.txt'; 
         let masterWordBank = [], availableWords = [], usedWords = [], grid = [], wordsToFind = [];
         let selectedCell = null, currentLevel = 1, lives = 7, currentWordIndex = 0, timeLeft = 45, timerInterval = null;
@@ -430,10 +428,8 @@
             });
         }
 
-        // --- NEW AD FREQUENCY LOGIC ---
         function nextLevel() {
             soundSelect();
-            // Check if current level is a multiple of AD_FREQUENCY
             if (currentLevel % AD_FREQUENCY === 0) {
                 pokiCommercialBreak(() => {
                     advanceToNextLevel();
@@ -443,7 +439,6 @@
             }
         }
 
-        // Helper function so we don't duplicate code
         function advanceToNextLevel() {
             currentLevel++;
             saveGameData();
