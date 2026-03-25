@@ -100,24 +100,21 @@
         /* =========================================
            DESKTOP & LANDSCAPE (16:9) ADAPTABILITY
            ========================================= */
-        @media (min-aspect-ratio: 1/1) { /* Triggers when screen is wider than it is tall */
-            #header-stats {
-                max-width: 900px; /* Expand header to cover desktop layout */
-            }
+        @media (min-aspect-ratio: 1/1) { 
+            #header-stats { max-width: 900px; }
             #game-area {
-                flex-direction: row; /* Put grid and word list side-by-side */
+                flex-direction: row; 
                 align-items: stretch;
                 justify-content: center;
                 max-width: 900px; 
             }
             #grid {
-                /* Dynamically scale grid to fit window height without scrolling */
                 width: calc(100vh - 200px); 
-                max-width: 600px; /* Cap width on extremely large screens */
+                max-width: 600px; 
                 flex-shrink: 0;
             }
             #word-list {
-                flex: 1; /* Word list fills remaining space on the right */
+                flex: 1; 
                 max-width: 350px;
             }
         }
@@ -171,7 +168,6 @@
     <script>
         // --- BULLETPROOF POKI FALLBACK ---
         if (typeof PokiSDK === 'undefined') {
-            console.warn("Poki SDK blocked by network. Loading dummy SDK to prevent crash.");
             window.PokiSDK = {
                 init: () => Promise.resolve(),
                 gameLoadingStart: () => {},
@@ -183,6 +179,16 @@
             };
         }
 
+        // 1. POKI: Initialize immediately (Do not wait for DOMContentLoaded)
+        PokiSDK.init().then(() => {
+            console.log("Poki SDK successfully initialized");
+        }).catch(() => {
+            console.log("Initialized Poki SDK with fallback");
+        });
+
+        // 2. POKI: Fire loading start immediately as the script runs
+        PokiSDK.gameLoadingStart();
+
         // --- SYNTHETIC AUDIO SYSTEM ---
         let audioCtx;
         function initAudio() {
@@ -190,7 +196,6 @@
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        // POKI REQUIREMENT: Mute/Unmute audio during ads
         function suspendAudio() {
             if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
         }
@@ -199,7 +204,7 @@
         }
 
         function playTone(freq, type, duration, vol=0.05) {
-            if (!audioCtx || audioCtx.state === 'suspended') return; // Don't play if muted
+            if (!audioCtx || audioCtx.state === 'suspended') return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = type;
@@ -212,7 +217,6 @@
             osc.stop(audioCtx.currentTime + duration);
         }
 
-        // Sound Effects Library
         function soundClick() { playTone(400, 'sine', 0.1); }
         function soundSelect() { playTone(600, 'sine', 0.15); }
         function soundMatch() {
@@ -255,16 +259,7 @@
             levelDisplay = document.getElementById('level-display');
             rewardMessage = document.getElementById('reward-message');
 
-            // POKI: Initialize SDK
-            PokiSDK.init().then(() => {
-                console.log("Poki SDK successfully initialized");
-                PokiSDK.gameLoadingStart(); // Start loading tracker
-                loadWords();
-            }).catch(() => {
-                console.log("Initialized Poki SDK with fallback");
-                PokiSDK.gameLoadingStart(); 
-                loadWords(); 
-            });
+            loadWords();
         });
 
         function loadSaveData() {
@@ -298,14 +293,16 @@
                 availableWords = masterWordBank.filter(w => !usedWords.includes(w));
                 
                 instructionsEl.style.display = "none"; 
-                
-                // POKI: Signal that loading is done and menu is ready
-                PokiSDK.gameLoadingFinished(); 
-                
                 startScreen.style.display = "flex"; 
+                
+                // 3. POKI: Signal that loading is done
+                PokiSDK.gameLoadingFinished(); 
+
             } catch (error) {
                 instructionsEl.innerHTML = "<span style='color: #ff5252;'>Error: Could not load words.txt.</span>";
                 console.error(error);
+                // Inform Poki loading is finished even if it failed, so it doesn't hang
+                PokiSDK.gameLoadingFinished(); 
             }
         }
 
@@ -313,7 +310,6 @@
             initAudio(); 
             soundSelect();
             startScreen.style.display = "none";
-            // Removed forced ad break here as per your request
             initGame();
         }
 
@@ -342,16 +338,11 @@
             soundClick();
             clearInterval(timerInterval);
             
-            // POKI: Game paused, stop gameplay tracking
+            // 4. POKI: Game paused, stop gameplay tracking
             PokiSDK.gameplayStop();
             
-            // Poki recommends commercial breaks during pauses.
-            suspendAudio();
-            PokiSDK.commercialBreak().then(() => {
-                resumeAudio();
-                gameAreaEl.style.display = "none";
-                pauseScreen.style.display = "flex";
-            });
+            gameAreaEl.style.display = "none";
+            pauseScreen.style.display = "flex";
         }
 
         function resumeGame() {
@@ -359,7 +350,7 @@
             pauseScreen.style.display = "none";
             gameAreaEl.style.display = "flex";
             
-            // POKI: Game resumed, start tracking again
+            // 5. POKI: Game resumed, start tracking again
             PokiSDK.gameplayStart(); 
             resumeTimer();
         }
@@ -371,7 +362,7 @@
 
             if (lives <= 0) {
                 soundLose();
-                // POKI: Out of lives, stop gameplay
+                // 6. POKI: Game over condition, stop gameplay
                 PokiSDK.gameplayStop(); 
                 
                 gameAreaEl.style.display = "none";
@@ -387,19 +378,15 @@
             }
         }
 
-        // --- PAUSE MENU AD LOGIC ---
         function watchAdToRefillLives() {
             soundClick();
-            
             if (lives >= 7) {
                 alert("You already have maximum lives! ❤️");
                 return;
             }
-
-            // POKI: Suspend audio BEFORE showing ad
             suspendAudio();
             PokiSDK.rewardedBreak().then((success) => {
-                resumeAudio(); // Unmute AFTER ad
+                resumeAudio();
                 if (success) {
                     lives = 7; 
                     updateUI(); 
@@ -409,20 +396,15 @@
             });
         }
 
-        // --- GAME OVER AD LOGIC ---
         function watchAdToContinue() {
             soundClick();
-            
-            // POKI: Suspend audio BEFORE showing ad
             suspendAudio();
             PokiSDK.rewardedBreak().then((success) => {
-                resumeAudio(); // Unmute AFTER ad
+                resumeAudio(); 
                 if (success) {
                     lives = 7;
                     updateUI();
                     gameOverScreen.style.display = "none";
-                    
-                    // Restart the level immediately after watching the ad
                     initGame(); 
                 } else {
                     alert("Ad was skipped or failed! Try again to refill lives.");
@@ -434,8 +416,7 @@
             soundSelect();
             currentLevel++;
             saveGameData();
-            
-            // Removed forced ad break here as per your request
+            // No ads placed here per your request
             initGame();
         }
 
@@ -486,7 +467,7 @@
             renderGrid();
             renderWordList();
             
-            // POKI: Gameplay starts the moment the grid is rendered and timer starts
+            // 7. POKI: Gameplay starts the moment the grid is rendered and timer starts
             PokiSDK.gameplayStart(); 
             startTimer();
         }
@@ -593,7 +574,7 @@
                 if (currentWordIndex === wordsToFind.length) {
                     clearInterval(timerInterval);
                     
-                    // POKI: Level complete, stop gameplay tracking
+                    // 8. POKI: Level complete, stop gameplay tracking
                     PokiSDK.gameplayStop(); 
                     
                     setTimeout(() => soundWin(), 300); 
