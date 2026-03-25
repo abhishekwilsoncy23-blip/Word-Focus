@@ -2,28 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-    <title>Word Focus</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tap the first and last letters of highlighted word</title>
     <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
     <style>
-        /* =========================================
-           CUSTOM SCROLLBAR FOR DARK THEME
-           ========================================= */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #1e1e1e; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #555; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #3498db; 
-        }
-
         /* =========================================
            RESPONSIVE BASE & FULL SCREEN FIXES
            ========================================= */
@@ -31,24 +13,20 @@
             margin: 0; background-color: #121212; color: #e0e0e0;
             font-family: 'Courier New', Courier, monospace;
             display: flex; flex-direction: column; align-items: center; 
-            min-height: 100vh; 
-            /* FIX: Changed 100vw to 100% and added overflow-y */
-            width: 100%; padding: 2dvh 2vw 5dvh 2vw; box-sizing: border-box;
+            height: 100dvh; width: 100vw; padding: 10px; box-sizing: border-box;
             user-select: none; touch-action: manipulation;
-            overflow-x: hidden; 
-            overflow-y: auto; 
+            overflow: hidden; /* Lock the screen */
         }
 
-        h1 { margin: 0 0 1vh 0; font-size: clamp(1.2rem, 4dvh, 2rem); color: #ffffff; text-transform: uppercase; text-align: center; flex-shrink: 0; }
-        
-        #instructions { font-size: clamp(0.8rem, 2dvh, 1rem); margin-bottom: 10px; color: #aaaaaa; text-align: center; flex-shrink: 0; }
+        h1 { margin: 0 0 10px 0; font-size: clamp(1.2rem, 3dvh, 1.8rem); color: #ffffff; text-transform: uppercase; text-align: center; }
+        #instructions { font-size: 0.9rem; margin-bottom: 10px; color: #aaaaaa; text-align: center; }
 
         /* Header Stats */
         #header-stats {
             display: none; justify-content: space-between; align-items: center;
-            width: 100%; max-width: 1000px; margin-bottom: 1.5dvh;
-            font-size: clamp(0.9rem, 2.5vw, 1.2rem); font-weight: bold; background: #1e1e1e;
-            padding: 1dvh 3vw; border-radius: 8px; box-sizing: border-box;
+            width: 100%; max-width: 1000px; margin-bottom: 10px;
+            font-size: clamp(0.9rem, 2.5vw, 1.1rem); font-weight: bold; background: #1e1e1e;
+            padding: 10px 15px; border-radius: 8px; box-sizing: border-box;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             flex-shrink: 0;
         }
@@ -56,31 +34,30 @@
         #timer-display { color: #ff5252; }
         
         #pause-btn {
-            background: none; border: none; color: white; font-size: clamp(1.2rem, 3dvh, 1.8rem);
+            background: none; border: none; color: white; font-size: 1.5rem;
             cursor: pointer; padding: 0; box-shadow: none; margin-top: 0;
-            transition: transform 0.2s;
         }
-        #pause-btn:hover { transform: scale(1.1); }
 
         /* Responsive Game Area */
         #game-area {
-            display: none; flex-direction: column; gap: 2dvh; 
-            width: 100%; max-width: 1200px;
+            display: none; flex-direction: column; gap: 15px; 
+            width: 100%; max-width: 1000px;
             align-items: center; justify-content: center;
+            flex: 1; min-height: 0; /* Allows children to shrink correctly */
         }
 
         #grid {
             display: grid; gap: 2px; background: #333333; padding: 4px;
             border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            width: 100%; max-width: min(90vw, 55dvh);
+            /* Fills space automatically while staying a square */
+            width: 100%; max-width: min(95vw, 60dvh);
             aspect-ratio: 1; flex-shrink: 0;
         }
 
         .cell {
             background: #242424; color: #e0e0e0; aspect-ratio: 1; display: flex; 
             align-items: center; justify-content: center;
-            font-size: clamp(0.8rem, min(5vw, 4dvh), 2.5rem); 
-            font-weight: bold; cursor: pointer;
+            font-size: min(5vw, 4dvh); font-weight: bold; cursor: pointer;
             border-radius: 4px; transition: 0.2s;
         }
 
@@ -90,16 +67,14 @@
 
         #word-list {
             display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-content: flex-start;
-            background: #1e1e1e; padding: 2dvh; border-radius: 8px; width: 100%; box-sizing: border-box;
+            background: #1e1e1e; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5); border: 2px dashed #555555;
             max-width: min(95vw, 60dvh);
-            /* FIX: Added max-height and overflow-y */
-            max-height: 25vh;
-            overflow-y: auto;
+            overflow-y: auto; flex-shrink: 1; max-height: 25dvh;
         }
 
         .word {
-            font-size: clamp(0.75rem, 2.5vw, 1.1rem); font-weight: bold; padding: 6px 12px;
+            font-size: clamp(0.8rem, 2.5vw, 1.1rem); font-weight: bold; padding: 5px 10px;
             border-radius: 20px; background: #333333; color: #cccccc; transition: 0.3s;
         }
 
@@ -109,16 +84,17 @@
         .screen {
             display: none; flex-direction: column; align-items: center; justify-content: center;
             margin: auto; text-align: center; background: #1e1e1e;
-            padding: 4dvh 5vw; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            width: 90%; max-width: 450px; box-sizing: border-box;
+            padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            width: 90%; max-width: 400px; box-sizing: border-box;
+            max-height: 90dvh; overflow-y: auto;
         }
 
         #start-screen { display: none; } 
 
         button {
-            background: #3498db; color: white; border: none; padding: 15px 20px;
-            font-size: clamp(1rem, 2.5vw, 1.2rem); font-weight: bold; border-radius: 8px; cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-family: inherit; margin-top: 15px;
+            background: #3498db; color: white; border: none; padding: 12px 20px;
+            font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-family: inherit; margin-top: 10px;
             transition: 0.2s; width: 100%;
         }
         button:hover { background: #2980b9; }
@@ -127,27 +103,26 @@
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
         /* =========================================
-           LANDSCAPE / DESKTOP / PC ADAPTABILITY
+           LANDSCAPE / DESKTOP ADAPTABILITY
            ========================================= */
-        @media (min-width: 600px) and (orientation: landscape) { 
+        @media (orientation: landscape) and (min-height: 400px) { 
             #game-area {
                 flex-direction: row; 
-                align-items: flex-start; 
-                gap: 4vw;
+                align-items: center;
+                gap: 20px;
             }
             #grid {
-                max-width: min(65vw, 75dvh); 
+                max-width: min(70vw, 75dvh); /* Gets bigger in landscape */
+                margin: auto;
+            }
+            .cell {
+                font-size: min(4vw, 5dvh);
             }
             #word-list {
                 flex-direction: column; flex-wrap: nowrap;
-                flex: 0 0 clamp(180px, 20vw, 300px);
-                max-width: 300px;
-                /* FIX: Added max-height for desktop */
-                max-height: 60vh;
-                overflow-y: auto;
-            }
-            .word {
-                font-size: clamp(0.9rem, 1.5vw, 1.2rem);
+                flex: 0 0 220px; /* Fixed width side panel */
+                max-width: 250px;
+                max-height: 75dvh;
             }
         }
     </style>
@@ -155,13 +130,12 @@
 <body>
 
     <h1>Word Focus</h1>
-    <p style="color: #f1c40f; font-size: clamp(0.7rem, 2dvh, 0.9rem); font-style: italic; margin: -5px 0 1dvh 0; text-align: center; flex-shrink: 0;">💡 Tap the first and last letter of the highlighted word.</p>
     <div id="instructions">Loading game assets...</div>
 
     <div id="start-screen" class="screen">
-        <div class="emoji-art" style="font-size: clamp(3rem, 10vw, 4rem); margin-bottom: 10px;">🔎🧠</div>
+        <div class="emoji-art" style="font-size: 3rem; margin-bottom: 10px;">🔎🧠</div>
         <h2>Ready to Play?</h2>
-        <p style="color: #aaa; font-size: 1rem;">Find the highlighted words before the timer runs out!</p>
+        <p style="color: #aaa; font-size: 0.9rem;">Find the highlighted words before the timer runs out!</p>
         <button onclick="startGameFromMenu()">▶ Play Game</button>
     </div>
 
@@ -178,23 +152,22 @@
     </div>
 
     <div id="win-screen" class="screen">
-        <div class="emoji-art" style="font-size: clamp(3rem, 10vw, 4rem); margin-bottom: 10px;">🎉</div>
+        <div class="emoji-art" style="font-size: 3rem; margin-bottom: 10px;">🎉</div>
         <h2>Level Complete!</h2>
         <div class="reward-text" id="reward-message" style="color: #4CAF50; font-size: 1.3rem; margin-top: 5px; margin-bottom: 10px;">+1 Life ❤️</div>
         <button onclick="nextLevel()">Next Level</button>
     </div>
 
     <div id="game-over-screen" class="screen">
-        <div class="emoji-art" style="font-size: clamp(3rem, 10vw, 4rem); margin-bottom: 10px;">⏰</div>
+        <div class="emoji-art" style="font-size: 3rem; margin-bottom: 10px;">⏰</div>
         <h2>Out of Lives!</h2>
         <p>You ran out of time.</p>
         <button class="ad-btn" onclick="watchAdToContinue()">📺 Watch Ad to Refill Lives</button>
     </div>
 
     <div id="pause-screen" class="screen">
-        <div class="emoji-art" style="font-size: clamp(3rem, 10vw, 4rem); margin-bottom: 10px;">☕</div>
+        <div class="emoji-art" style="font-size: 3rem; margin-bottom: 10px;">☕</div>
         <h2>Game Paused</h2>
-        <p style="color: #f1c40f; font-size: 0.9rem; font-style: italic; margin-top: 0; margin-bottom: 15px;">💡 Tip: Tap the first and last letter of the highlighted word.</p>
         <button onclick="resumeGame()">Resume Game</button>
         <button class="ad-btn" onclick="watchAdToRefillLives()">📺 Watch Ad to Refill Lives</button>
     </div>
@@ -288,7 +261,7 @@
 
         // --- GAME VARIABLES ---
         const GRID_SIZE = 10;
-        const AD_FREQUENCY = 3; 
+        const AD_FREQUENCY = 1; // <--- EDIT THIS VARIABLE to control mid-roll ad frequency!
         const WORDS_URL = 'words.txt'; 
         let masterWordBank = [], availableWords = [], usedWords = [], grid = [], wordsToFind = [];
         let selectedCell = null, currentLevel = 1, lives = 7, currentWordIndex = 0, timeLeft = 45, timerInterval = null;
@@ -448,8 +421,10 @@
             });
         }
 
+        // --- NEW AD FREQUENCY LOGIC ---
         function nextLevel() {
             soundSelect();
+            // Check if current level is a multiple of AD_FREQUENCY
             if (currentLevel % AD_FREQUENCY === 0) {
                 pokiCommercialBreak(() => {
                     advanceToNextLevel();
@@ -459,6 +434,7 @@
             }
         }
 
+        // Helper function so we don't duplicate code
         function advanceToNextLevel() {
             currentLevel++;
             saveGameData();
