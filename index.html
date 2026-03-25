@@ -130,12 +130,14 @@
 <body>
 
     <h1>Word Focus</h1>
+    <p style="color: #f1c40f; font-size: 0.85rem; font-style: italic; margin: -5px 0 10px 0; text-align: center;">💡 Tap the first and last letter of the highlighted word.</p>
     <div id="instructions">Loading game assets...</div>
 
     <div id="start-screen" class="screen">
         <div class="emoji-art" style="font-size: 3rem; margin-bottom: 10px;">🔎🧠</div>
         <h2>Ready to Play?</h2>
         <p style="color: #aaa; font-size: 0.9rem;">Find the highlighted words before the timer runs out!</p>
+        <p style="color: #f1c40f; font-size: 0.85rem; font-style: italic; margin-top: 0; margin-bottom: 15px;">💡 Tap the first and last letter of the highlighted word.</p>
         <button onclick="startGameFromMenu()">▶ Play Game</button>
     </div>
 
@@ -168,6 +170,7 @@
     <div id="pause-screen" class="screen">
         <div class="emoji-art" style="font-size: 3rem; margin-bottom: 10px;">☕</div>
         <h2>Game Paused</h2>
+        <p style="color: #f1c40f; font-size: 0.85rem; font-style: italic; margin-top: 0; margin-bottom: 15px;">💡 Tip: Tap the first and last letter of the highlighted word.</p>
         <button onclick="resumeGame()">Resume Game</button>
         <button class="ad-btn" onclick="watchAdToRefillLives()">📺 Watch Ad to Refill Lives</button>
     </div>
