@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Word Focus</title>
-    <script src="https://game-player.poki.com/core/v2/poki-sdk.js"></script>
+    <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
     <style>
         body {
             margin: 0; background-color: #121212; color: #e0e0e0;
@@ -167,7 +167,6 @@
 
     <script>
         // 1. POKI: Initialize immediately 
-        // (Do NOT use a custom fallback block; Poki's v2 script handles local testing automatically!)
         PokiSDK.init().then(() => {
             console.log("Poki SDK successfully initialized");
         }).catch(() => {
