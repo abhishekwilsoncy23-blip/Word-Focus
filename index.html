@@ -7,6 +7,24 @@
     <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
     <style>
         /* =========================================
+           CUSTOM SCROLLBAR FOR DARK THEME
+           ========================================= */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #555; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3498db; 
+        }
+
+        /* =========================================
            RESPONSIVE BASE & FULL SCREEN FIXES
            ========================================= */
         body {
@@ -14,10 +32,11 @@
             font-family: 'Courier New', Courier, monospace;
             display: flex; flex-direction: column; align-items: center; 
             min-height: 100vh; 
-            width: 100vw; padding: 2dvh 2vw 5dvh 2vw; box-sizing: border-box;
+            /* FIX: Changed 100vw to 100% and added overflow-y */
+            width: 100%; padding: 2dvh 2vw 5dvh 2vw; box-sizing: border-box;
             user-select: none; touch-action: manipulation;
-            overflow-x: hidden; /* Prevent horizontal scrolling */
-            /* Page natural vertical scrolling takes over now */
+            overflow-x: hidden; 
+            overflow-y: auto; 
         }
 
         h1 { margin: 0 0 1vh 0; font-size: clamp(1.2rem, 4dvh, 2rem); color: #ffffff; text-transform: uppercase; text-align: center; flex-shrink: 0; }
@@ -74,7 +93,9 @@
             background: #1e1e1e; padding: 2dvh; border-radius: 8px; width: 100%; box-sizing: border-box;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5); border: 2px dashed #555555;
             max-width: min(95vw, 60dvh);
-            /* Removed internal scrolling properties */
+            /* FIX: Added max-height and overflow-y */
+            max-height: 25vh;
+            overflow-y: auto;
         }
 
         .word {
@@ -90,7 +111,6 @@
             margin: auto; text-align: center; background: #1e1e1e;
             padding: 4dvh 5vw; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             width: 90%; max-width: 450px; box-sizing: border-box;
-            /* Removed internal scrolling properties */
         }
 
         #start-screen { display: none; } 
@@ -112,7 +132,7 @@
         @media (min-width: 600px) and (orientation: landscape) { 
             #game-area {
                 flex-direction: row; 
-                align-items: flex-start; /* Aligns to top so it flows naturally downward */
+                align-items: flex-start; 
                 gap: 4vw;
             }
             #grid {
@@ -122,7 +142,9 @@
                 flex-direction: column; flex-wrap: nowrap;
                 flex: 0 0 clamp(180px, 20vw, 300px);
                 max-width: 300px;
-                /* Removed max-height here too */
+                /* FIX: Added max-height for desktop */
+                max-height: 60vh;
+                overflow-y: auto;
             }
             .word {
                 font-size: clamp(0.9rem, 1.5vw, 1.2rem);
