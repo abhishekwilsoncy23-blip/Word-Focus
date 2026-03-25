@@ -51,8 +51,9 @@
             border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
             /* Fills space automatically while staying a square */
             width: 100%; max-width: min(95vw, 60dvh);
+            max-height: 50dvh; /* Ensures it restricts height to allow scrolling */
             aspect-ratio: 1; flex-shrink: 0;
-            overflow: auto; /* ADDED SCROLLBAR HERE */
+            overflow: scroll; /* ALWAYS shows scrollbars */
         }
 
         .cell {
@@ -71,7 +72,8 @@
             background: #1e1e1e; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5); border: 2px dashed #555555;
             max-width: min(95vw, 60dvh);
-            overflow-y: auto; flex-shrink: 1; max-height: 25dvh;
+            overflow-y: scroll; /* ALWAYS shows scrollbar */
+            flex-shrink: 1; max-height: 25dvh;
         }
 
         .word {
@@ -95,8 +97,7 @@
         /* ADDED: Specific pause screen scrolling constraints */
         #pause-screen {
             max-height: 60dvh; /* Lower max-height to force scrolling on shorter screens */
-            overflow-y: auto;
-            /* overflow-y: scroll; <- Change 'auto' to 'scroll' if you want the bar visible 100% of the time even when not needed */
+            overflow-y: scroll; /* ALWAYS shows scrollbar */
         }
 
         button {
@@ -121,6 +122,7 @@
             }
             #grid {
                 max-width: min(70vw, 75dvh); /* Gets bigger in landscape */
+                max-height: 75dvh; /* Explicit height to allow scroll in landscape */
                 margin: auto;
             }
             .cell {
@@ -137,7 +139,7 @@
 </head>
 <body>
 
-    <p>tap first and last letter of highlighted word</p>
+    <p>word focus tap first and last letter of highlighted word</p>
     <div id="instructions">Loading game assets...</div>
 
     <div id="start-screen" class="screen">
