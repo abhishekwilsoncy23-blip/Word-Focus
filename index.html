@@ -52,6 +52,7 @@
             /* Fills space automatically while staying a square */
             width: 100%; max-width: min(95vw, 60dvh);
             aspect-ratio: 1; flex-shrink: 0;
+            overflow: auto; /* ADDED SCROLLBAR HERE */
         }
 
         .cell {
@@ -90,6 +91,13 @@
         }
 
         #start-screen { display: none; } 
+        
+        /* ADDED: Specific pause screen scrolling constraints */
+        #pause-screen {
+            max-height: 60dvh; /* Lower max-height to force scrolling on shorter screens */
+            overflow-y: auto;
+            /* overflow-y: scroll; <- Change 'auto' to 'scroll' if you want the bar visible 100% of the time even when not needed */
+        }
 
         button {
             background: #3498db; color: white; border: none; padding: 12px 20px;
