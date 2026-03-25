@@ -6,22 +6,25 @@
     <title>Word Focus</title>
     <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
     <style>
+        /* =========================================
+           RESPONSIVE BASE & FULL SCREEN FIXES
+           ========================================= */
         body {
             margin: 0; background-color: #121212; color: #e0e0e0;
             font-family: 'Courier New', Courier, monospace;
             display: flex; flex-direction: column; align-items: center; 
-            min-height: 100vh; padding: 15px; box-sizing: border-box;
+            height: 100dvh; width: 100vw; padding: 10px; box-sizing: border-box;
             user-select: none; touch-action: manipulation;
-            overflow: hidden; /* Prevent scrolling on the body */
+            overflow: hidden; /* Lock the screen */
         }
 
-        h1 { margin: 0 0 10px 0; font-size: clamp(1.5rem, 4vh, 2rem); color: #ffffff; text-transform: uppercase; text-align: center; }
+        h1 { margin: 0 0 10px 0; font-size: clamp(1.2rem, 3dvh, 1.8rem); color: #ffffff; text-transform: uppercase; text-align: center; }
         #instructions { font-size: 0.9rem; margin-bottom: 10px; color: #aaaaaa; text-align: center; }
 
         /* Header Stats */
         #header-stats {
             display: none; justify-content: space-between; align-items: center;
-            width: 100%; max-width: 800px; margin-bottom: 15px;
+            width: 100%; max-width: 1000px; margin-bottom: 10px;
             font-size: clamp(0.9rem, 2.5vw, 1.1rem); font-weight: bold; background: #1e1e1e;
             padding: 10px 15px; border-radius: 8px; box-sizing: border-box;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
@@ -37,23 +40,24 @@
 
         /* Responsive Game Area */
         #game-area {
-            display: none; flex-direction: column; gap: 15px; width: 100%; max-width: 800px;
+            display: none; flex-direction: column; gap: 15px; 
+            width: 100%; max-width: 1000px;
             align-items: center; justify-content: center;
-            flex: 1; min-height: 0; /* Allows children to shrink */
+            flex: 1; min-height: 0; /* Allows children to shrink correctly */
         }
 
         #grid {
             display: grid; gap: 2px; background: #333333; padding: 4px;
             border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            /* Dynamically sizes the grid to never overflow vertically or horizontally */
-            width: 100%; max-width: min(100vw - 30px, 60vh);
+            /* Fills space automatically while staying a square */
+            width: 100%; max-width: min(95vw, 60dvh);
             aspect-ratio: 1; flex-shrink: 0;
         }
 
         .cell {
             background: #242424; color: #e0e0e0; aspect-ratio: 1; display: flex; 
             align-items: center; justify-content: center;
-            font-size: clamp(1rem, 4vw, 1.4rem); font-weight: bold; cursor: pointer;
+            font-size: min(5vw, 4dvh); font-weight: bold; cursor: pointer;
             border-radius: 4px; transition: 0.2s;
         }
 
@@ -65,8 +69,8 @@
             display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-content: flex-start;
             background: #1e1e1e; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5); border: 2px dashed #555555;
-            max-width: min(100vw - 30px, 60vh);
-            overflow-y: auto; max-height: 25vh; /* Scrollable if screen is very short */
+            max-width: min(95vw, 60dvh);
+            overflow-y: auto; flex-shrink: 1; max-height: 25dvh;
         }
 
         .word {
@@ -79,10 +83,10 @@
 
         .screen {
             display: none; flex-direction: column; align-items: center; justify-content: center;
-            margin-top: auto; margin-bottom: auto; text-align: center; background: #1e1e1e;
+            margin: auto; text-align: center; background: #1e1e1e;
             padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            width: 100%; max-width: 400px; box-sizing: border-box;
-            max-height: 90vh; overflow-y: auto;
+            width: 90%; max-width: 400px; box-sizing: border-box;
+            max-height: 90dvh; overflow-y: auto;
         }
 
         #start-screen { display: none; } 
@@ -99,22 +103,26 @@
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
         /* =========================================
-           LANDSCAPE ADAPTABILITY (e.g., 640x360, 836x470)
+           LANDSCAPE / DESKTOP ADAPTABILITY
            ========================================= */
-        @media (min-aspect-ratio: 5/4) { 
+        @media (orientation: landscape) and (min-height: 400px) { 
             #game-area {
                 flex-direction: row; 
-                align-items: stretch;
+                align-items: center;
+                gap: 20px;
             }
             #grid {
-                /* Constrain grid height to leave room for header */
-                max-width: calc(100vh - 100px);
-                margin: 0;
+                max-width: min(70vw, 75dvh); /* Gets bigger in landscape */
+                margin: auto;
+            }
+            .cell {
+                font-size: min(4vw, 5dvh);
             }
             #word-list {
-                flex: 1; 
+                flex-direction: column; flex-wrap: nowrap;
+                flex: 0 0 220px; /* Fixed width side panel */
                 max-width: 250px;
-                max-height: calc(100vh - 100px);
+                max-height: 75dvh;
             }
         }
     </style>
@@ -179,15 +187,13 @@
             console.warn("Poki SDK is blocked by your browser! Running in standalone mode.");
         }
 
-        // Poki Events
         function pokiLoadingFinished() { if (isPokiLoaded) PokiSDK.gameLoadingFinished(); }
         function pokiGameplayStart() { if (isPokiLoaded) PokiSDK.gameplayStart(); }
         function pokiGameplayStop() { if (isPokiLoaded) PokiSDK.gameplayStop(); }
         
-        // --- NEW: Commercial Break (Mid-roll ad) ---
         function pokiCommercialBreak(callback) {
             if (isPokiLoaded) {
-                suspendAudio(); // Mute game during ad
+                suspendAudio(); 
                 PokiSDK.commercialBreak().then(() => {
                     resumeAudio();
                     if (callback) callback();
@@ -200,7 +206,7 @@
 
         function pokiRewardedBreak(callback) {
             if (isPokiLoaded) {
-                suspendAudio(); // Mute game during ad
+                suspendAudio(); 
                 PokiSDK.rewardedBreak().then((success) => {
                     resumeAudio();
                     callback(success);
@@ -255,6 +261,7 @@
 
         // --- GAME VARIABLES ---
         const GRID_SIZE = 10;
+        const AD_FREQUENCY = 3; // <--- EDIT THIS VARIABLE to control mid-roll ad frequency!
         const WORDS_URL = 'words.txt'; 
         let masterWordBank = [], availableWords = [], usedWords = [], grid = [], wordsToFind = [];
         let selectedCell = null, currentLevel = 1, lives = 7, currentWordIndex = 0, timeLeft = 45, timerInterval = null;
@@ -414,14 +421,24 @@
             });
         }
 
-        // --- NEW: Trigger Commercial Break here ---
+        // --- NEW AD FREQUENCY LOGIC ---
         function nextLevel() {
             soundSelect();
-            pokiCommercialBreak(() => {
-                currentLevel++;
-                saveGameData();
-                initGame();
-            });
+            // Check if current level is a multiple of AD_FREQUENCY
+            if (currentLevel % AD_FREQUENCY === 0) {
+                pokiCommercialBreak(() => {
+                    advanceToNextLevel();
+                });
+            } else {
+                advanceToNextLevel();
+            }
+        }
+
+        // Helper function so we don't duplicate code
+        function advanceToNextLevel() {
+            currentLevel++;
+            saveGameData();
+            initGame();
         }
 
         function initGame() {
