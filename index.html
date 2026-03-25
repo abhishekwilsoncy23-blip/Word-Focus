@@ -94,9 +94,6 @@
         button.ad-btn:hover { background: #d35400; }
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
-        .reward-text { color: #4CAF50; font-size: 1.5rem; margin-top: 5px; margin-bottom: 15px;}
-        .emoji-art { font-size: 4rem; margin-bottom: 15px; }
-
         /* =========================================
            DESKTOP & LANDSCAPE (16:9) ADAPTABILITY
            ========================================= */
@@ -126,7 +123,7 @@
     <div id="instructions">Loading game assets...</div>
 
     <div id="start-screen" class="screen">
-        <div class="emoji-art">🔎🧠</div>
+        <div class="emoji-art" style="font-size: 4rem; margin-bottom: 15px;">🔎🧠</div>
         <h2>Ready to Play?</h2>
         <p style="color: #aaa; font-size: 0.9rem;">Find the highlighted words before the timer runs out!</p>
         <button onclick="startGameFromMenu()">▶ Play Game</button>
@@ -145,36 +142,53 @@
     </div>
 
     <div id="win-screen" class="screen">
-        <div class="emoji-art">🎉</div>
+        <div class="emoji-art" style="font-size: 4rem; margin-bottom: 15px;">🎉</div>
         <h2>Level Complete!</h2>
-        <div class="reward-text" id="reward-message">+1 Life ❤️</div>
+        <div class="reward-text" id="reward-message" style="color: #4CAF50; font-size: 1.5rem; margin-top: 5px; margin-bottom: 15px;">+1 Life ❤️</div>
         <button onclick="nextLevel()">Next Level</button>
     </div>
 
     <div id="game-over-screen" class="screen">
-        <div class="emoji-art">⏰</div>
+        <div class="emoji-art" style="font-size: 4rem; margin-bottom: 15px;">⏰</div>
         <h2>Out of Lives!</h2>
         <p>You ran out of time.</p>
         <button class="ad-btn" onclick="watchAdToContinue()">📺 Watch Ad to Refill Lives</button>
     </div>
 
     <div id="pause-screen" class="screen">
-        <div class="emoji-art">☕</div>
+        <div class="emoji-art" style="font-size: 4rem; margin-bottom: 15px;">☕</div>
         <h2>Game Paused</h2>
         <button onclick="resumeGame()">Resume Game</button>
         <button class="ad-btn" onclick="watchAdToRefillLives()">📺 Watch Ad to Refill Lives</button>
     </div>
 
     <script>
-        // 1. POKI: Initialize immediately 
-        PokiSDK.init().then(() => {
-            console.log("Poki SDK successfully initialized");
-        }).catch(() => {
-            console.log("Poki SDK initialized (Adblock or local environment)");
-        });
+        // --- POKI SDK SAFE WRAPPERS (Crash-proof for Adblockers) ---
+        let isPokiLoaded = (typeof PokiSDK !== 'undefined');
 
-        // 2. POKI: Fire loading start immediately as the script runs
-        PokiSDK.gameLoadingStart();
+        if (isPokiLoaded) {
+            PokiSDK.init().then(() => {
+                console.log("Poki SDK successfully initialized");
+            }).catch(() => {
+                console.log("Poki SDK initialized (Adblock or local environment)");
+            });
+            PokiSDK.gameLoadingStart();
+        } else {
+            console.warn("Poki SDK is blocked by your browser! Running in standalone mode.");
+        }
+
+        // Poki Events
+        function pokiLoadingFinished() { if (isPokiLoaded) PokiSDK.gameLoadingFinished(); }
+        function pokiGameplayStart() { if (isPokiLoaded) PokiSDK.gameplayStart(); }
+        function pokiGameplayStop() { if (isPokiLoaded) PokiSDK.gameplayStop(); }
+        function pokiRewardedBreak(callback) {
+            if (isPokiLoaded) {
+                PokiSDK.rewardedBreak().then(callback);
+            } else {
+                console.log("SDK missing - Simulating ad success.");
+                callback(true); // Grant reward anyway if adblock is on
+            }
+        }
 
         // --- SYNTHETIC AUDIO SYSTEM ---
         let audioCtx;
@@ -182,13 +196,8 @@
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
-
-        function suspendAudio() {
-            if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
-        }
-        function resumeAudio() {
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-        }
+        function suspendAudio() { if (audioCtx && audioCtx.state === 'running') audioCtx.suspend(); }
+        function resumeAudio() { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); }
 
         function playTone(freq, type, duration, vol=0.05) {
             if (!audioCtx || audioCtx.state === 'suspended') return;
@@ -254,11 +263,8 @@
             if (!isNaN(savedLevel)) currentLevel = savedLevel;
             
             let savedLives = localStorage.getItem('wordFocus_lives');
-            if (savedLives !== null && !isNaN(parseInt(savedLives))) { 
-                lives = parseInt(savedLives); 
-            } else { 
-                lives = 7; 
-            }
+            if (savedLives !== null && !isNaN(parseInt(savedLives))) { lives = parseInt(savedLives); } 
+            else { lives = 7; }
             
             let savedUsedWords = JSON.parse(localStorage.getItem('wordFocus_usedWords'));
             if (savedUsedWords) usedWords = savedUsedWords;
@@ -282,14 +288,12 @@
                 instructionsEl.style.display = "none"; 
                 startScreen.style.display = "flex"; 
                 
-                // 3. POKI: Signal that loading is done
-                PokiSDK.gameLoadingFinished(); 
-
+                // POKI: Loading finished
+                pokiLoadingFinished(); 
             } catch (error) {
                 instructionsEl.innerHTML = "<span style='color: #ff5252;'>Error: Could not load words.txt.</span>";
                 console.error(error);
-                // Inform Poki loading is finished even if it failed, so it doesn't hang
-                PokiSDK.gameLoadingFinished(); 
+                pokiLoadingFinished(); 
             }
         }
 
@@ -325,8 +329,8 @@
             soundClick();
             clearInterval(timerInterval);
             
-            // 4. POKI: Game paused, stop gameplay tracking
-            PokiSDK.gameplayStop();
+            // POKI: Game paused, stop tracking
+            pokiGameplayStop();
             
             gameAreaEl.style.display = "none";
             pauseScreen.style.display = "flex";
@@ -337,8 +341,8 @@
             pauseScreen.style.display = "none";
             gameAreaEl.style.display = "flex";
             
-            // 5. POKI: Game resumed, start tracking again
-            PokiSDK.gameplayStart(); 
+            // POKI: Game resumed, start tracking
+            pokiGameplayStart(); 
             resumeTimer();
         }
 
@@ -349,8 +353,8 @@
 
             if (lives <= 0) {
                 soundLose();
-                // 6. POKI: Game over condition, stop gameplay
-                PokiSDK.gameplayStop(); 
+                // POKI: Level over, stop tracking
+                pokiGameplayStop(); 
                 
                 gameAreaEl.style.display = "none";
                 headerStatsEl.style.display = "none";
@@ -367,12 +371,10 @@
 
         function watchAdToRefillLives() {
             soundClick();
-            if (lives >= 7) {
-                alert("You already have maximum lives! ❤️");
-                return;
-            }
+            if (lives >= 7) { alert("You already have maximum lives! ❤️"); return; }
             suspendAudio();
-            PokiSDK.rewardedBreak().then((success) => {
+            
+            pokiRewardedBreak((success) => {
                 resumeAudio();
                 if (success) {
                     lives = 7; 
@@ -386,7 +388,8 @@
         function watchAdToContinue() {
             soundClick();
             suspendAudio();
-            PokiSDK.rewardedBreak().then((success) => {
+            
+            pokiRewardedBreak((success) => {
                 resumeAudio(); 
                 if (success) {
                     lives = 7;
@@ -403,7 +406,6 @@
             soundSelect();
             currentLevel++;
             saveGameData();
-            // No ads placed here per your request
             initGame();
         }
 
@@ -454,8 +456,8 @@
             renderGrid();
             renderWordList();
             
-            // 7. POKI: Gameplay starts the moment the grid is rendered and timer starts
-            PokiSDK.gameplayStart(); 
+            // POKI: Player input received, start tracking
+            pokiGameplayStart(); 
             startTimer();
         }
 
@@ -516,7 +518,6 @@
 
         function handleCellClick(r, c) {
             let cellEl = document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`);
-            
             if (!selectedCell) {
                 soundClick(); 
                 selectedCell = { r, c };
@@ -551,7 +552,6 @@
 
             if (match) {
                 soundMatch(); 
-                
                 path.forEach(pos => {
                     document.querySelector(`.cell[data-r='${pos.r}'][data-c='${pos.c}']`).classList.add('found');
                 });
@@ -561,11 +561,10 @@
                 if (currentWordIndex === wordsToFind.length) {
                     clearInterval(timerInterval);
                     
-                    // 8. POKI: Level complete, stop gameplay tracking
-                    PokiSDK.gameplayStop(); 
+                    // POKI: Level complete, stop tracking
+                    pokiGameplayStop(); 
                     
                     setTimeout(() => soundWin(), 300); 
-                    
                     if (lives < 7) {
                         lives++; 
                         rewardMessage.innerText = "+1 Life ❤️";
